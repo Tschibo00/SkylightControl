@@ -13,6 +13,11 @@
  * bucket contact - 18
  */
 
+#define THINGER_SERIAL_DEBUG
+​
+#include <ThingerESP32.h>
+#include "secrets.h"
+
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
@@ -42,16 +47,19 @@
 #define RAIN_LOCK_MS 600000     // time after rain detection in which convenience opening is disabled
 #define RAIN_THRESHOLD 1        // threshold at which the rain counter at least has to change in the last cycle to trigger rain detection
  
-int currentWindowState = WINDOW_CLOSED;
-Adafruit_BME280 bme;
-float temperature;
+Adafruit_BME280 bme;            // sensor library
+float temperature;              // environment readings
 float pressure;
 float humidity;
 bool raining=false;
-long unlockRainClosure=0l;
+
+int currentWindowState = WINDOW_CLOSED;
 long oldRainBucketCount=0l;     // used to calculate if rain starts falling
 long newRainBucketCount=0l;     // increased by interrupt
+long unlockRainClosure=0l;      // timing variables
 long rainPinDebounce=0l;
+
+ThingerESP32 thing(THINGER_USER, THINGER_ID, THINGER_TOKEN);
 
 void setup() {
   Serial.begin(115200);
@@ -60,9 +68,11 @@ void setup() {
   pinMode(PIN_RELAIS_OPEN,OUTPUT);
   pinMode(PIN_RELAIS_CLOSE,OUTPUT);
 
-  attachInterrupt(PIN_RAIN, onRainTrigger, FALLING);
+  thing.add_wifi(WIFI_SSID, WIFI_PW);
 
-  bme.begin(0x76);  
+  bme.begin(0x76);
+
+  attachInterrupt(PIN_RAIN, onRainTrigger, FALLING);
 
   Serial.println("Wintergarten Steuerung starting");
 }
