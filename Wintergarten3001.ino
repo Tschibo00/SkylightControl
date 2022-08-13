@@ -21,27 +21,37 @@
 #define WINDOW_IGNORE -1
 #define WINDOW_OPEN 0
 #define WINDOW_CLOSED 1
-#define RELAIS_ACTIVE_MS 100
 
-#define PIN_RELAIS_OPEN 25
-#define PIN_RELAIS_CLOSE 26
-#define PIN_RELAIS_ACTIVE 0
-#define PIN_RAIN 18
+/*
+ * HW parameters
+ */
+#define RELAIS_ACTIVE_MS 100    // switch cycle for the relais
+#define POLL_CYCLE_MS 3000      // cycle time at which conditions are evaluated. Must be longer than the driving time of the skylight!!!
+#define PIN_RELAIS_OPEN 25      // relais to open the skylight
+#define PIN_RELAIS_CLOSE 26     // relais to close the skylight
+#define PIN_RELAIS_ACTIVE 0     // 0 ACTIVE low, 1 ACTIVE high
+#define PIN_RAIN 18             // bucket simulation input pin (switch to ground, pulled-up internally)
+#define DEBOUNCE_MS 50          // Debounce period
 
-int newWindowState = WINDOW_IGNORE;
+/*
+ * Control parameters
+ */
+#define TEMP_CLOSE_BELOW 25.f   // close the skylight below this temperature
+#define TEMP_OPEN_ABOVE 35.f    // open the skylight above this temperature
+#define HUM_OPEN_ABOVE 75.f     // open the skylight above this humidity
+#define RAIN_LOCK_MS 600000     // time after rain detection in which convenience opening is disabled
+#define RAIN_THRESHOLD 1        // threshold at which the rain counter at least has to change in the last cycle to trigger rain detection
+ 
 int currentWindowState = WINDOW_CLOSED;
 Adafruit_BME280 bme;
 float temperature;
 float pressure;
 float humidity;
-
-void readRainSensor(){}
-void readTemperatureSensor(){temperature=bme.readTemperature();}  // in degree C
-void readPressureSensor(){pressure=bme.readPressure();}              // in 100th hPa
-void readHumiditySensor(){humidity=bme.readHumidity();}        // in Percent
-int evaluteWindowPosition(){
-  return (millis()/37)%2;
-}
+bool raining=false;
+long unlockRainClosure=0l;
+long oldRainBucketCount=0l;     // used to calculate if rain starts falling
+long newRainBucketCount=0l;     // increased by interrupt
+long rainPinDebounce=0l;
 
 void setup() {
   Serial.begin(115200);
@@ -50,28 +60,89 @@ void setup() {
   pinMode(PIN_RELAIS_OPEN,OUTPUT);
   pinMode(PIN_RELAIS_CLOSE,OUTPUT);
 
+  attachInterrupt(PIN_RAIN, onRainTrigger, FALLING);
+
   bme.begin(0x76);  
 
   Serial.println("Wintergarten Steuerung starting");
 }
 
-void setWindowState(int newWindowState){
-  if (currentWindowState != newWindowState) {
-    setOutput(newWindowState);
-    currentWindowState = newWindowState;
-  } else {
-    Serial.println("keeping old state");
+/*
+ * BME280 sensor readout functions
+ */
+void readTemperatureSensor(){temperature=bme.readTemperature();}  // in degree C
+void readPressureSensor(){pressure=bme.readPressure();}           // in 100th hPa
+void readHumiditySensor(){humidity=bme.readHumidity();}           // in Percent
+
+void onRainTrigger(){
+  if (millis()>rainPinDebounce){
+    newRainBucketCount++;
+    rainPinDebounce=millis()+DEBOUNCE_MS;
   }
-  Serial.print("current state ");
-  Serial.println(currentWindowState);
 }
 
+/*
+ * Signals rain if a certain threshold is passed
+ */
+void readRainSensor(){
+  if (newRainBucketCount>=oldRainBucketCount+RAIN_THRESHOLD){
+    oldRainBucketCount=newRainBucketCount;
+    raining=true;
+  }else{
+    raining=false;
+  }
+}
+
+/*
+ * Business logic. Determines, based on environment parameters, if the skylight needs to be open or closed
+ */
+void evaluteWindowPosition(){
+  int newState=WINDOW_IGNORE;
+  bool force=false;
+
+  if (millis()>unlockRainClosure){
+    // convenience open/close
+    if (temperature<TEMP_CLOSE_BELOW){newState=WINDOW_CLOSED;Serial.println("DRIVE: Closing b/c temp too low");}
+    if (temperature>TEMP_OPEN_ABOVE){newState=WINDOW_OPEN;Serial.println("DRIVE: Opening b/c temp too high");}
+    if (humidity>HUM_OPEN_ABOVE){newState=WINDOW_OPEN;Serial.println("DRIVE: Opening b/c humidity too high");}
+    // force close if rain starts
+    if (raining){
+      Serial.println("DRIVE: Forcibly closing b/c it's raining");
+      newState=WINDOW_CLOSED;
+      force=true;
+    }
+  }
+
+  if (raining){
+    unlockRainClosure=millis()+RAIN_LOCK_MS;    // extend lock time if it's still raining
+  }
+
+  setWindowState(newState,force);
+}
+
+/*
+ * triggers the new window state (if required)
+ * if force is true, the relais are triggered, independent of current state (to forcibly close window, even if the stored state is incorrect, e.g. because the skylight was operated manually)
+ */
+void setWindowState(int newWindowState,bool force){
+  if ((currentWindowState != newWindowState)||force) {
+    setOutput(newWindowState);
+    currentWindowState = newWindowState;
+  }
+}
+
+/*
+ * Drives the relais based on the required state
+ */
 void setOutput(int relaisState){
   setRelaisState(relaisState);
   delay(RELAIS_ACTIVE_MS);
   setRelaisState(WINDOW_IGNORE);
 }
 
+/*
+ * hardware driver for the relais
+ */
 void setRelaisState(int relaisState){
   switch(relaisState){
     case WINDOW_OPEN:
@@ -87,28 +158,25 @@ void setRelaisState(int relaisState){
       digitalWrite(PIN_RELAIS_OPEN,!PIN_RELAIS_ACTIVE);
       break;
   }
-  Serial.print("relais state ");
-  Serial.println(relaisState);
 }
 
 void loop() {
-  Serial.println("---------");
-    readRainSensor();
-    readTemperatureSensor();
-    readPressureSensor();
-    readHumiditySensor();
+  readRainSensor();
+  readTemperatureSensor();
+  readPressureSensor();
+  readHumiditySensor();
 
-    Serial.print("Temp ");
-    Serial.print(temperature);
-    Serial.print("C Hum ");
-    Serial.print(humidity);
-    Serial.print("% Pres ");
-    Serial.print(pressure/100.f);
-    Serial.println("hPa");
+  Serial.print("Rain ");
+  Serial.print(raining);
+  Serial.print(" Temp ");
+  Serial.print(temperature);
+  Serial.print("C Hum ");
+  Serial.print(humidity);
+  Serial.print("% Pres ");
+  Serial.print(pressure/100.f);
+  Serial.println("hPa");
 
-    newWindowState = evaluteWindowPosition();
+  evaluteWindowPosition();
 
-    setWindowState(newWindowState);
-
-    delay(3000);
+  delay(POLL_CYCLE_MS);
 }
