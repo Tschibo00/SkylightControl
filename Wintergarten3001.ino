@@ -17,15 +17,13 @@
  */
 
 /*
- * TODOs
- * webserver for getting and setting the config values
- * HW check
+ * TODOs HW check
  * pulse frequency of rain sensor
  * do double signals in one direction trigger reverse driving of skylight?
  */
 
 //#define THINGER_SERIAL_DEBUG
-#define DEBUG_LOCAL
+//#define DEBUG_LOCAL
 
 #include <ThingerESP32.h>
 #include <Arduino.h>
@@ -33,6 +31,10 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include "secrets.h"
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <WebServer.h>
+#include <Update.h>
 
 #define WINDOW_IGNORE -1
 #define WINDOW_OPEN 0
@@ -42,24 +44,24 @@
  * HW parameters
  */
 #define RELAIS_ACTIVE_MS 100    // switch cycle for the relais
-#define POLL_CYCLE_MS 500      // cycle time at which conditions are evaluated. Must be longer than the driving time of the skylight!!!
+long POLL_CYCLE_MS=10000;       // cycle time at which conditions are evaluated. Must be longer than the driving time of the skylight!!!
 #define PIN_RELAIS_OPEN 25      // relais to open the skylight
 #define PIN_RELAIS_CLOSE 26     // relais to close the skylight
 #define PIN_RELAIS_ACTIVE 0     // 0 ACTIVE low, 1 ACTIVE high
 #define PIN_RAIN 18             // bucket simulation input pin (switch to ground, pulled-up internally)
 #define DEBOUNCE_MS 50          // Debounce period
-#define RAIN_PER_SIGNAL 0.01f   // l/m2 per rain sensor signal
+float RAIN_PER_SIGNAL=0.01f;    // l/m2 per rain sensor signal
 
 /*
  * Control parameters
  */
-#define TEMP_CLOSE_BELOW 25.f   // close the skylight below this temperature
-#define TEMP_OPEN_ABOVE 35.f    // open the skylight above this temperature
-#define HUM_OPEN_ABOVE 70.f     // open the skylight above this humidity
-#define HUM_HYSTERESIS 50.f     // humidity must fall below this to re-enable humidity opening
-#define RAIN_LOCK_MS 10000     // time after rain detection in which convenience opening is disabled
-#define RAIN_THRESHOLD 1        // threshold at which the rain counter at least has to change in the last cycle to trigger rain detection
-#define RAIN_PERIOD 60000       // period in which rain amount is accumulated (used for pushing to thinger.io)
+float TEMP_CLOSE_BELOW=25.f;    // close the skylight below this temperature
+float TEMP_OPEN_ABOVE=35.f;     // open the skylight above this temperature
+float HUM_OPEN_ABOVE=70.f;      // open the skylight above this humidity
+float HUM_HYSTERESIS=50.f;      // humidity must fall below this to re-enable humidity opening
+long RAIN_LOCK_MS=600000;       // time after rain detection in which convenience opening is disabled
+long RAIN_THRESHOLD=1;          // threshold at which the rain counter at least has to change in the last cycle to trigger rain detection
+long RAIN_PERIOD=3600000;       // period in which rain amount is accumulated (used for pushing to thinger.io)
  
 Adafruit_BME280 bme;            // sensor library
 float temperature;              // environment readings
@@ -83,6 +85,48 @@ long lastAccumulatedRainValue=0l;
 float rainAmount=0.f;
 
 ThingerESP32 thing(THINGER_USER, THINGER_ID, THINGER_TOKEN);
+WebServer server(80);
+char htmlBuf[10240];
+
+/*
+ * Server Index Page
+ */
+const char* serverIndex = 
+"<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
+"<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
+   "<input type='file' name='update'>"
+        "<input type='submit' value='Update'>"
+    "</form>"
+ "<div id='prg'>progress: 0%</div>"
+ "<script>"
+  "$('form').submit(function(e){"
+  "e.preventDefault();"
+  "var form = $('#upload_form')[0];"
+  "var data = new FormData(form);"
+  " $.ajax({"
+  "url: '/update',"
+  "type: 'POST',"
+  "data: data,"
+  "contentType: false,"
+  "processData:false,"
+  "xhr: function() {"
+  "var xhr = new window.XMLHttpRequest();"
+  "xhr.upload.addEventListener('progress', function(evt) {"
+  "if (evt.lengthComputable) {"
+  "var per = evt.loaded / evt.total;"
+  "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
+  "}"
+  "}, false);"
+  "return xhr;"
+  "},"
+  "success:function(d, s) {"
+  "console.log('success!')" 
+ "},"
+ "error: function (a, b, c) {"
+ "}"
+ "});"
+ "});"
+ "</script>";
 
 void setup() {
   Serial.begin(115200);
@@ -95,6 +139,8 @@ void setup() {
   pinMode(35,INPUT);
   #endif
 
+  setRelaisState(WINDOW_IGNORE);
+  
   thing.add_wifi(WIFI_SSID, WIFI_PW);
   thing["temperature"] >> outputValue(temperature);
   thing["humidity"] >> outputValue(humidity);
@@ -103,9 +149,90 @@ void setup() {
 
   bme.begin(0x76);
 
+  WiFi.begin(WIFI_SSID,WIFI_PW);
+  while (WiFi.status()!=WL_CONNECTED){delay(500);Serial.print(".");}
+  WiFi.config(IPAddress(192,168,178,53), IPAddress(192,168,178,1), IPAddress(255,255,255,0));  
+  Serial.println(WiFi.localIP());
+  
+  server.on("/", HTTP_GET, [](){
+    server.sendHeader("Connection","close");
+    snprintf(htmlBuf,sizeof(htmlBuf),"<html><body><h1>Aktuelle Werte</h1><table><tr><td>Temperatur</td><td>%.1f &deg;C</td></tr><tr><td>Feuchtigkeit</td><td>%.1f &percnt;</td></tr><tr><td>Luftdruck</td><td>%.1f hPa</td></tr><tr></tr><tr><td>Regen?</td><td>%d</td></tr><tr><td>Regenmenge l/h</td><td>%.2f</td></tr><tr><td>Fenster</td><td>%s</td></tr></table><br/><a href=\"/config\">Konfiguration</a><br/><a href=\"serverIndex\">OTA Update</a></body></html>",temperature,humidity,pressure,raining,rainAmount,getWindowPos());
+    server.send(200,"text/html",htmlBuf);
+  });
+  server.on("/serverIndex", HTTP_GET, []() {
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/html", serverIndex);
+  });
+  server.on("/config",HTTP_GET,[](){
+    server.sendHeader("Connection", "close");
+    snprintf(htmlBuf,sizeof(htmlBuf),"<html><body><form action=\"/configset\">cycle time at which conditions are evaluated. Must be longer than the driving time of the skylight!!!</br>POLL_CYCLE_MS<input type=\"number\" name=\"POLL_CYCLE_MS\" value=\"%d\"><br/>l/m2 per rain sensor signal</br>RAIN_PER_SIGNAL<input type=\"number\" name=\"RAIN_PER_SIGNAL\" value=\"%f\"><br/>close the skylight below this temperature<br/>TEMP_CLOSE_BELOW<input type=\"number\" name=\"TEMP_CLOSE_BELOW\" value=\"%.1f\"><br/>open the skylight above this temperature<br/>TEMP_OPEN_ABOVE<input type=\"number\" name=\"TEMP_OPEN_ABOVE\" value=\"%.1f\"><br/>open the skylight above this humidity<br/>HUM_OPEN_ABOVE<input type=\"number\" name=\"HUM_OPEN_ABOVE\" value=\"%.1f\"><br/>humidity must fall below this to re-enable humidity opening<br/>HUM_HYSTERESIS<input type=\"number\" name=\"HUM_HYSTERESIS\" value=\"%.1f\"><br/>time after rain detection in which convenience opening is disabled<br/>RAIN_LOCK_MS<input type=\"number\" name=\"RAIN_LOCK_MS\" value=\"%d\"><br/>threshold at which the rain counter at least has to change in the last cycle to trigger rain detection<br/>RAIN_THRESHOLD<input type=\"number\" name=\"RAIN_THRESHOLD\" value=\"%d\"><br/>period in which rain amount is accumulated (used for pushing to thinger.io)<br/>RAIN_PERIOD<input type=\"number\" name=\"RAIN_PERIOD\" value=\"%d\"><br/><input type=\"submit\" value=\"Send\"></form></body></html>",POLL_CYCLE_MS,RAIN_PER_SIGNAL,TEMP_CLOSE_BELOW,TEMP_OPEN_ABOVE,HUM_OPEN_ABOVE,HUM_HYSTERESIS,RAIN_LOCK_MS,RAIN_THRESHOLD,RAIN_PERIOD);
+    server.send(200, "text/html",htmlBuf);
+  });
+  server.on("/configset", HTTP_GET, [](){
+    if (server.args()) 
+      for (int i = 0; i < server.args(); i++){
+        if (server.argName(i)=="POLL_CYCLE_MS") POLL_CYCLE_MS=strtol(server.arg(i).c_str(),0,0);
+        if (server.argName(i)=="RAIN_PER_SIGNAL") RAIN_PER_SIGNAL=strtof(server.arg(i).c_str(),0);
+        if (server.argName(i)=="TEMP_CLOSE_BELOW") TEMP_CLOSE_BELOW=strtof(server.arg(i).c_str(),0);
+        if (server.argName(i)=="TEMP_OPEN_ABOVE") TEMP_OPEN_ABOVE=strtof(server.arg(i).c_str(),0);
+        if (server.argName(i)=="HUM_OPEN_ABOVE") HUM_OPEN_ABOVE=strtof(server.arg(i).c_str(),0);
+        if (server.argName(i)=="HUM_HYSTERESIS") HUM_HYSTERESIS=strtof(server.arg(i).c_str(),0);
+        if (server.argName(i)=="RAIN_LOCK_MS") RAIN_LOCK_MS=strtol(server.arg(i).c_str(),0,0);
+        if (server.argName(i)=="RAIN_THRESHOLD") RAIN_THRESHOLD=strtol(server.arg(i).c_str(),0,0);
+        if (server.argName(i)=="RAIN_PERIOD") RAIN_PERIOD=strtol(server.arg(i).c_str(),0,0);
+      }
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/html", "<html><head><meta http-equiv=\"refresh\" content=\"0; url=/config\" /></head></html>");
+  });
+  server.on("/update", HTTP_POST, []() {
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+    ESP.restart();
+  }, []() {
+    HTTPUpload& upload = server.upload();
+    if (upload.status == UPLOAD_FILE_START) {
+      Serial.printf("Update: %s\n", upload.filename.c_str());
+      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+      /* flashing firmware to ESP*/
+      if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_END) {
+      if (Update.end(true)) { //true to set the size to the current progress
+        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+      } else {
+        Update.printError(Serial);
+      }
+    }
+  });
+  server.begin();
+  
   attachInterrupt(PIN_RAIN, onRainTrigger, FALLING);
 
   Serial.println("Wintergarten Steuerung starting");
+}
+
+/*
+ * returns string for window position
+ */
+const char* getWindowPos(){
+  switch(currentWindowState){
+    case WINDOW_OPEN: return "offen";
+    case WINDOW_CLOSED: return "geschlossen";
+  }
+}
+
+/*
+ * interrupt function called when rain sensor triggers
+ */
+void onRainTrigger(){
+  if (millis()>rainPinDebounce){
+    newRainBucketCount++;
+    rainPinDebounce=millis()+DEBOUNCE_MS;
+  }
 }
 
 /*
@@ -125,16 +252,6 @@ void readHumiditySensor(){                                    // in Percent
   #else
   humidity=bme.readHumidity();
   #endif
-}
-
-/*
- * interrupt function called when rain sensor triggers
- */
-void onRainTrigger(){
-  if (millis()>rainPinDebounce){
-    newRainBucketCount++;
-    rainPinDebounce=millis()+DEBOUNCE_MS;
-  }
 }
 
 /*
@@ -279,5 +396,6 @@ void loop() {
     evaluteWindowPosition();
   }
 
+  server.handleClient();
   thing.handle();
 }
