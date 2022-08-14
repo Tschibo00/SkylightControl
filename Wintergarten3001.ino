@@ -13,15 +13,25 @@
  * bucket contact - 18
  */
 
-#define THINGER_SERIAL_DEBUG
-​
-#include <ThingerESP32.h>
-#include "secrets.h"
+/*
+ * TODOs
+ * hysteresis for humidity
+ * webserver for getting and setting the config values
+ * rain instantly closes window
+ * HW check
+ * pulse frequency of rain sensor
+ * do double signals in one direction trigger reverse driving of skylight?
+ */
 
+#define THINGER_SERIAL_DEBUG
+
+
+#include <ThingerESP32.h>
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
+#include "secrets.h"
 
 #define WINDOW_IGNORE -1
 #define WINDOW_OPEN 0
@@ -37,6 +47,7 @@
 #define PIN_RELAIS_ACTIVE 0     // 0 ACTIVE low, 1 ACTIVE high
 #define PIN_RAIN 18             // bucket simulation input pin (switch to ground, pulled-up internally)
 #define DEBOUNCE_MS 50          // Debounce period
+#define RAIN_PER_SIGNAL 0.01f   // l/m2 per rain sensor signal
 
 /*
  * Control parameters
@@ -46,18 +57,24 @@
 #define HUM_OPEN_ABOVE 75.f     // open the skylight above this humidity
 #define RAIN_LOCK_MS 600000     // time after rain detection in which convenience opening is disabled
 #define RAIN_THRESHOLD 1        // threshold at which the rain counter at least has to change in the last cycle to trigger rain detection
+#define RAIN_PERIOD 60000       // period in which rain amount is accumulated (used for pushing to thinger.io)
  
 Adafruit_BME280 bme;            // sensor library
 float temperature;              // environment readings
 float pressure;
 float humidity;
 bool raining=false;
+long rainPerHour;
 
 int currentWindowState = WINDOW_CLOSED;
 long oldRainBucketCount=0l;     // used to calculate if rain starts falling
 long newRainBucketCount=0l;     // increased by interrupt
 long unlockRainClosure=0l;      // timing variables
 long rainPinDebounce=0l;
+long nextSensorReadout=0l;
+long nextRainAccumulation=0l;
+long lastAccumulatedRainValue=0l;
+float rainAmount=0.f;
 
 ThingerESP32 thing(THINGER_USER, THINGER_ID, THINGER_TOKEN);
 
@@ -69,6 +86,10 @@ void setup() {
   pinMode(PIN_RELAIS_CLOSE,OUTPUT);
 
   thing.add_wifi(WIFI_SSID, WIFI_PW);
+  thing["temperature"] >> outputValue(temperature);
+  thing["humidity"] >> outputValue(humidity);
+  thing["pressure"] >> outputValue(pressure);
+  thing["rain"] >> outputValue(rainAmount);
 
   bme.begin(0x76);
 
@@ -81,7 +102,7 @@ void setup() {
  * BME280 sensor readout functions
  */
 void readTemperatureSensor(){temperature=bme.readTemperature();}  // in degree C
-void readPressureSensor(){pressure=bme.readPressure();}           // in 100th hPa
+void readPressureSensor(){pressure=bme.readPressure()/100.f;}     // in hPa
 void readHumiditySensor(){humidity=bme.readHumidity();}           // in Percent
 
 void onRainTrigger(){
@@ -100,6 +121,17 @@ void readRainSensor(){
     raining=true;
   }else{
     raining=false;
+  }
+}
+
+/*
+ * Calculates accumulated amount of rain in given period
+ */
+void calculateRainAmount(){
+  if (millis()>=nextRainAccumulation){
+    nextRainAccumulation=millis()+RAIN_PERIOD;
+    rainAmount=(newRainBucketCount-lastAccumulatedRainValue)*RAIN_PER_SIGNAL;
+    lastAccumulatedRainValue=newRainBucketCount;
   }
 }
 
@@ -171,22 +203,29 @@ void setRelaisState(int relaisState){
 }
 
 void loop() {
-  readRainSensor();
-  readTemperatureSensor();
-  readPressureSensor();
-  readHumiditySensor();
+  if (millis()>=nextSensorReadout){
+    nextSensorReadout=millis()+POLL_CYCLE_MS;
+  
+    readRainSensor();
+    readTemperatureSensor();
+    readPressureSensor();
+    readHumiditySensor();
+    calculateRainAmount();
+  
+    Serial.print("Rain ");
+    Serial.print(raining);
+    Serial.print(" (");
+    Serial.print(newRainBucketCount);
+    Serial.print(") ");
+    Serial.print(temperature);
+    Serial.print("C ");
+    Serial.print(humidity);
+    Serial.print("% ");
+    Serial.print(pressure);
+    Serial.println("hPa");
+  
+    evaluteWindowPosition();
+  }
 
-  Serial.print("Rain ");
-  Serial.print(raining);
-  Serial.print(" Temp ");
-  Serial.print(temperature);
-  Serial.print("C Hum ");
-  Serial.print(humidity);
-  Serial.print("% Pres ");
-  Serial.print(pressure/100.f);
-  Serial.println("hPa");
-
-  evaluteWindowPosition();
-
-  delay(POLL_CYCLE_MS);
+  thing.handle();
 }
