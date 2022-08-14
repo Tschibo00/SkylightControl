@@ -19,7 +19,6 @@
 /*
  * TODOs
  * webserver for getting and setting the config values
- * rain instantly closes window
  * HW check
  * pulse frequency of rain sensor
  * do double signals in one direction trigger reverse driving of skylight?
@@ -112,22 +111,25 @@ void setup() {
 /*
  * BME280 sensor readout functions
  */
-void readTemperatureSensor(){
+void readTemperatureSensor(){                                 // in degree C
   #ifdef DEBUG_LOCAL
   temperature=((float)analogRead(34))/200.f+20.f;
   #else
   temperature=bme.readTemperature();
   #endif
-}  // in degree C
-void readPressureSensor(){pressure=bme.readPressure()/100.f;}     // in hPa
-void readHumiditySensor(){
+}
+void readPressureSensor(){pressure=bme.readPressure()/100.f;} // in hPa
+void readHumiditySensor(){                                    // in Percent
   #ifdef DEBUG_LOCAL
   humidity=((float)analogRead(35))/41.f;
   #else
   humidity=bme.readHumidity();
   #endif
-}           // in Percent
+}
 
+/*
+ * interrupt function called when rain sensor triggers
+ */
 void onRainTrigger(){
   if (millis()>rainPinDebounce){
     newRainBucketCount++;
@@ -142,6 +144,14 @@ void readRainSensor(){
   if (newRainBucketCount>=oldRainBucketCount+RAIN_THRESHOLD){
     oldRainBucketCount=newRainBucketCount;
     raining=true;
+
+    // instantly force close if rain starts
+    if (!rainClosureLocked){
+      Serial.println("DRIVE: Forcibly closing b/c it's raining");
+      setWindowState(WINDOW_CLOSED,true);
+    }
+    unlockRainClosure=millis()+RAIN_LOCK_MS;    // extend lock time if it's still raining
+    rainClosureLocked=true;
   }else{
     raining=false;
   }
@@ -163,11 +173,9 @@ void calculateRainAmount(){
  */
 void evaluteWindowPosition(){
   int newState=WINDOW_IGNORE;
-  bool force=false;
 
   if (millis()>unlockRainClosure){
     if (rainClosureLocked){
-      Serial.println("unlocking rain closure");
       rainClosureLocked=false;
       tempBelowLocked=false;
       tempAboveLocked=false;
@@ -200,21 +208,9 @@ void evaluteWindowPosition(){
         Serial.println("DRIVE: Opening b/c humidity too high");
       }
     }
-    // force close if rain starts
-    if (raining){
-      Serial.println("DRIVE: Forcibly closing b/c it's raining");
-      Serial.println("locking rain closure");
-      newState=WINDOW_CLOSED;
-      force=true;
-    }
   }
 
-  if (raining){
-    unlockRainClosure=millis()+RAIN_LOCK_MS;    // extend lock time if it's still raining
-    rainClosureLocked=true;
-  }
-
-  setWindowState(newState,force);
+  setWindowState(newState,false);
 }
 
 /*
@@ -223,12 +219,6 @@ void evaluteWindowPosition(){
  */
 void setWindowState(int newWindowState,bool force){
   if (newWindowState==WINDOW_IGNORE)return;
-  Serial.print("old ");
-  Serial.print(currentWindowState);
-  Serial.print(" new ");
-  Serial.print(newWindowState);
-  Serial.print(" force ");
-  Serial.println(force);
   if ((currentWindowState != newWindowState)||force) {
     setOutput(newWindowState);
     currentWindowState = newWindowState;
