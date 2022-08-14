@@ -11,11 +11,13 @@
  * 
  * wire rain sensor as follows
  * bucket contact - 18
+ * 
+ * For local debugging attach pots to 34+35 for temperature and humidity
+ * define DEBUG_LOCAL to enable local debugging via pots
  */
 
 /*
  * TODOs
- * hysteresis for humidity
  * webserver for getting and setting the config values
  * rain instantly closes window
  * HW check
@@ -23,8 +25,8 @@
  * do double signals in one direction trigger reverse driving of skylight?
  */
 
-#define THINGER_SERIAL_DEBUG
-
+//#define THINGER_SERIAL_DEBUG
+#define DEBUG_LOCAL
 
 #include <ThingerESP32.h>
 #include <Arduino.h>
@@ -41,7 +43,7 @@
  * HW parameters
  */
 #define RELAIS_ACTIVE_MS 100    // switch cycle for the relais
-#define POLL_CYCLE_MS 3000      // cycle time at which conditions are evaluated. Must be longer than the driving time of the skylight!!!
+#define POLL_CYCLE_MS 500      // cycle time at which conditions are evaluated. Must be longer than the driving time of the skylight!!!
 #define PIN_RELAIS_OPEN 25      // relais to open the skylight
 #define PIN_RELAIS_CLOSE 26     // relais to close the skylight
 #define PIN_RELAIS_ACTIVE 0     // 0 ACTIVE low, 1 ACTIVE high
@@ -54,8 +56,9 @@
  */
 #define TEMP_CLOSE_BELOW 25.f   // close the skylight below this temperature
 #define TEMP_OPEN_ABOVE 35.f    // open the skylight above this temperature
-#define HUM_OPEN_ABOVE 75.f     // open the skylight above this humidity
-#define RAIN_LOCK_MS 600000     // time after rain detection in which convenience opening is disabled
+#define HUM_OPEN_ABOVE 70.f     // open the skylight above this humidity
+#define HUM_HYSTERESIS 50.f     // humidity must fall below this to re-enable humidity opening
+#define RAIN_LOCK_MS 10000     // time after rain detection in which convenience opening is disabled
 #define RAIN_THRESHOLD 1        // threshold at which the rain counter at least has to change in the last cycle to trigger rain detection
 #define RAIN_PERIOD 60000       // period in which rain amount is accumulated (used for pushing to thinger.io)
  
@@ -65,6 +68,10 @@ float pressure;
 float humidity;
 bool raining=false;
 long rainPerHour;
+bool humidityLocked=false;
+bool tempAboveLocked=false;
+bool tempBelowLocked=false;
+bool rainClosureLocked=false;
 
 int currentWindowState = WINDOW_CLOSED;
 long oldRainBucketCount=0l;     // used to calculate if rain starts falling
@@ -84,6 +91,10 @@ void setup() {
   pinMode(PIN_RAIN,INPUT_PULLUP);
   pinMode(PIN_RELAIS_OPEN,OUTPUT);
   pinMode(PIN_RELAIS_CLOSE,OUTPUT);
+  #ifdef DEBUG_LOCAL
+  pinMode(34,INPUT);
+  pinMode(35,INPUT);
+  #endif
 
   thing.add_wifi(WIFI_SSID, WIFI_PW);
   thing["temperature"] >> outputValue(temperature);
@@ -101,9 +112,21 @@ void setup() {
 /*
  * BME280 sensor readout functions
  */
-void readTemperatureSensor(){temperature=bme.readTemperature();}  // in degree C
+void readTemperatureSensor(){
+  #ifdef DEBUG_LOCAL
+  temperature=((float)analogRead(34))/200.f+20.f;
+  #else
+  temperature=bme.readTemperature();
+  #endif
+}  // in degree C
 void readPressureSensor(){pressure=bme.readPressure()/100.f;}     // in hPa
-void readHumiditySensor(){humidity=bme.readHumidity();}           // in Percent
+void readHumiditySensor(){
+  #ifdef DEBUG_LOCAL
+  humidity=((float)analogRead(35))/41.f;
+  #else
+  humidity=bme.readHumidity();
+  #endif
+}           // in Percent
 
 void onRainTrigger(){
   if (millis()>rainPinDebounce){
@@ -143,13 +166,44 @@ void evaluteWindowPosition(){
   bool force=false;
 
   if (millis()>unlockRainClosure){
+    if (rainClosureLocked){
+      Serial.println("unlocking rain closure");
+      rainClosureLocked=false;
+      tempBelowLocked=false;
+      tempAboveLocked=false;
+      humidityLocked=false;
+    }
+  }
+  if (!rainClosureLocked){
     // convenience open/close
-    if (temperature<TEMP_CLOSE_BELOW){newState=WINDOW_CLOSED;Serial.println("DRIVE: Closing b/c temp too low");}
-    if (temperature>TEMP_OPEN_ABOVE){newState=WINDOW_OPEN;Serial.println("DRIVE: Opening b/c temp too high");}
-    if (humidity>HUM_OPEN_ABOVE){newState=WINDOW_OPEN;Serial.println("DRIVE: Opening b/c humidity too high");}
+    if (temperature<TEMP_CLOSE_BELOW){
+      if (!tempBelowLocked){
+        newState=WINDOW_CLOSED;
+        tempBelowLocked=true;
+        tempAboveLocked=false;
+        Serial.println("DRIVE: Closing b/c temp too low");
+      }
+    }
+    if (temperature>TEMP_OPEN_ABOVE){
+      if (!tempAboveLocked){
+        newState=WINDOW_OPEN;
+        tempBelowLocked=false;
+        tempAboveLocked=true;
+        Serial.println("DRIVE: Opening b/c temp too high");
+      }
+    }
+    if (humidity<HUM_HYSTERESIS)humidityLocked=false;
+    if (humidity>HUM_OPEN_ABOVE){
+      if (!humidityLocked){
+        newState=WINDOW_OPEN;
+        humidityLocked=true;
+        Serial.println("DRIVE: Opening b/c humidity too high");
+      }
+    }
     // force close if rain starts
     if (raining){
       Serial.println("DRIVE: Forcibly closing b/c it's raining");
+      Serial.println("locking rain closure");
       newState=WINDOW_CLOSED;
       force=true;
     }
@@ -157,6 +211,7 @@ void evaluteWindowPosition(){
 
   if (raining){
     unlockRainClosure=millis()+RAIN_LOCK_MS;    // extend lock time if it's still raining
+    rainClosureLocked=true;
   }
 
   setWindowState(newState,force);
@@ -167,6 +222,13 @@ void evaluteWindowPosition(){
  * if force is true, the relais are triggered, independent of current state (to forcibly close window, even if the stored state is incorrect, e.g. because the skylight was operated manually)
  */
 void setWindowState(int newWindowState,bool force){
+  if (newWindowState==WINDOW_IGNORE)return;
+  Serial.print("old ");
+  Serial.print(currentWindowState);
+  Serial.print(" new ");
+  Serial.print(newWindowState);
+  Serial.print(" force ");
+  Serial.println(force);
   if ((currentWindowState != newWindowState)||force) {
     setOutput(newWindowState);
     currentWindowState = newWindowState;
