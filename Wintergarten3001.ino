@@ -226,14 +226,16 @@ void setup() {
 void readConfig(){
   POLL_CYCLE_MS=prefs.getLong("POLL_CYCLE_MS",60000);
   RAIN_PER_SIGNAL=prefs.getFloat("RAIN_PER_SIGNAL",0.01f);
-  TEMP_CLOSE_BELOW=prefs.getFloat("TEMP_CLOSE_BELOW",25.f);
+  TEMP_CLOSE_BELOW=prefs.getFloat("TEMP_CLOSE_BLW",25.f);
   TEMP_OPEN_ABOVE=prefs.getFloat("TEMP_OPEN_ABOVE",35.f);
   HUM_OPEN_ABOVE=prefs.getFloat("HUM_OPEN_ABOVE",70.f);
   HUM_HYSTERESIS=prefs.getFloat("HUM_HYSTERESIS",50.f);
   RAIN_LOCK_MS=prefs.getLong("RAIN_LOCK_MS",600000);
   RAIN_THRESHOLD=prefs.getLong("RAIN_THRESHOLD",1);
   RAIN_PERIOD=prefs.getLong("RAIN_PERIOD",3600000);
-  currentWindowState=prefs.getInt("currentWindowState",WINDOW_CLOSED);
+  currentWindowState=prefs.getInt("WindowState",WINDOW_CLOSED);
+  Serial.print("read state from config ");
+  Serial.println(getWindowPos());
 }
 
 /*
@@ -242,7 +244,7 @@ void readConfig(){
 void writeConfig(){
   prefs.putLong("POLL_CYCLE_MS",POLL_CYCLE_MS);
   prefs.putFloat("RAIN_PER_SIGNAL",RAIN_PER_SIGNAL);
-  prefs.putFloat("TEMP_CLOSE_BELOW",TEMP_CLOSE_BELOW);
+  prefs.putFloat("TEMP_CLOSE_BLW",TEMP_CLOSE_BELOW);
   prefs.putFloat("TEMP_OPEN_ABOVE",TEMP_OPEN_ABOVE);
   prefs.putFloat("HUM_OPEN_ABOVE",HUM_OPEN_ABOVE);
   prefs.putFloat("HUM_HYSTERESIS",HUM_HYSTERESIS);
@@ -255,7 +257,9 @@ void writeConfig(){
  * Writes window state to preferences
  */
 void writeWindowState(){
-  prefs.putInt("currentWindowState",currentWindowState);
+  prefs.putInt("WindowState",currentWindowState);
+  Serial.print("write state to config ");
+  Serial.println(getWindowPos());
 }
 
 /*
