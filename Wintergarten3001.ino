@@ -166,11 +166,11 @@ void setup() {
   });
   server.on("/config",HTTP_GET,[](){
     server.sendHeader("Connection", "close");
-    snprintf(htmlBuf,sizeof(htmlBuf),"<html><body><form action=\"/configset\">cycle time at which conditions are evaluated. Must be longer than the driving time of the skylight!!!</br>POLL_CYCLE_MS<input type=\"number\" name=\"POLL_CYCLE_MS\" value=\"%d\"><br/>l/m2 per rain sensor signal</br>RAIN_PER_SIGNAL<input type=\"number\" name=\"RAIN_PER_SIGNAL\" value=\"%f\"><br/>close the skylight below this temperature<br/>TEMP_CLOSE_BELOW<input type=\"number\" name=\"TEMP_CLOSE_BELOW\" value=\"%.1f\"><br/>open the skylight above this temperature<br/>TEMP_OPEN_ABOVE<input type=\"number\" name=\"TEMP_OPEN_ABOVE\" value=\"%.1f\"><br/>open the skylight above this humidity<br/>HUM_OPEN_ABOVE<input type=\"number\" name=\"HUM_OPEN_ABOVE\" value=\"%.1f\"><br/>humidity must fall below this to re-enable humidity opening<br/>HUM_HYSTERESIS<input type=\"number\" name=\"HUM_HYSTERESIS\" value=\"%.1f\"><br/>time after rain detection in which convenience opening is disabled<br/>RAIN_LOCK_MS<input type=\"number\" name=\"RAIN_LOCK_MS\" value=\"%d\"><br/>threshold at which the rain counter at least has to change in the last cycle to trigger rain detection<br/>RAIN_THRESHOLD<input type=\"number\" name=\"RAIN_THRESHOLD\" value=\"%d\"><br/>period in which rain amount is accumulated (used for pushing to thinger.io)<br/>RAIN_PERIOD<input type=\"number\" name=\"RAIN_PERIOD\" value=\"%d\"><br/><input type=\"submit\" value=\"Send\"></form></body></html>",POLL_CYCLE_MS,RAIN_PER_SIGNAL,TEMP_CLOSE_BELOW,TEMP_OPEN_ABOVE,HUM_OPEN_ABOVE,HUM_HYSTERESIS,RAIN_LOCK_MS,RAIN_THRESHOLD,RAIN_PERIOD);
+    snprintf(htmlBuf,sizeof(htmlBuf),"<html><body><form action=\"/configset\">cycle time at which conditions are evaluated. Must be longer than the driving time of the skylight!!!</br>POLL_CYCLE_MS<input type=\"number\" min=100 name=\"POLL_CYCLE_MS\" value=\"%d\"><br/>l/m2 per rain sensor signal</br>RAIN_PER_SIGNAL<input type=\"number\" min=0.001 step=0.001 name=\"RAIN_PER_SIGNAL\" value=\"%f\"><br/>close the skylight below this temperature<br/>TEMP_CLOSE_BELOW<input type=\"number\" step=0.1 min=10 max=40 name=\"TEMP_CLOSE_BELOW\" value=\"%.1f\"><br/>open the skylight above this temperature<br/>TEMP_OPEN_ABOVE<input type=\"number\" step=0.1 min=10 max=40 name=\"TEMP_OPEN_ABOVE\" value=\"%.1f\"><br/>open the skylight above this humidity<br/>HUM_OPEN_ABOVE<input type=\"number\" step=1 min=1 max=99 name=\"HUM_OPEN_ABOVE\" value=\"%.1f\"><br/>humidity must fall below this to re-enable humidity opening<br/>HUM_HYSTERESIS<input type=\"number\" step=1 min=1 max=99 name=\"HUM_HYSTERESIS\" value=\"%.1f\"><br/>time after rain detection in which convenience opening is disabled<br/>RAIN_LOCK_MS<input type=\"number\" min=100 name=\"RAIN_LOCK_MS\" value=\"%d\"><br/>threshold at which the rain counter at least has to change in the last cycle to trigger rain detection<br/>RAIN_THRESHOLD<input type=\"number\" min=1 name=\"RAIN_THRESHOLD\" value=\"%d\"><br/>period in which rain amount is accumulated (used for pushing to thinger.io)<br/>RAIN_PERIOD<input type=\"number\" min=100 name=\"RAIN_PERIOD\" value=\"%d\"><br/><input type=\"submit\" value=\"Send\"></form></body></html>",POLL_CYCLE_MS,RAIN_PER_SIGNAL,TEMP_CLOSE_BELOW,TEMP_OPEN_ABOVE,HUM_OPEN_ABOVE,HUM_HYSTERESIS,RAIN_LOCK_MS,RAIN_THRESHOLD,RAIN_PERIOD);
     server.send(200, "text/html",htmlBuf);
   });
   server.on("/configset", HTTP_GET, [](){
-    if (server.args()) 
+    if (server.args()) {
       for (int i = 0; i < server.args(); i++){
         if (server.argName(i)=="POLL_CYCLE_MS") POLL_CYCLE_MS=strtol(server.arg(i).c_str(),0,0);
         if (server.argName(i)=="RAIN_PER_SIGNAL") RAIN_PER_SIGNAL=strtof(server.arg(i).c_str(),0);
@@ -182,9 +182,19 @@ void setup() {
         if (server.argName(i)=="RAIN_THRESHOLD") RAIN_THRESHOLD=strtol(server.arg(i).c_str(),0,0);
         if (server.argName(i)=="RAIN_PERIOD") RAIN_PERIOD=strtol(server.arg(i).c_str(),0,0);
       }
-    writeConfig();
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/html", "<html><head><meta http-equiv=\"refresh\" content=\"0; url=/config\" /></head></html>");
+      if ((TEMP_CLOSE_BELOW>=TEMP_OPEN_ABOVE)||(HUM_HYSTERESIS>=HUM_OPEN_ABOVE)){
+        readConfig();
+        server.sendHeader("Connection", "close");
+        server.send(400, "text/html", "invalid values");
+      }else{
+        writeConfig();
+        server.sendHeader("Connection", "close");
+        server.send(200, "text/html", "<html><head><meta http-equiv=\"refresh\" content=\"0; url=/config\" /></head></html>");
+      }
+    }else{
+      server.sendHeader("Connection", "close");
+      server.send(400, "text/html", "empty config");
+    }
   });
   server.on("/update", HTTP_POST, []() {
     server.sendHeader("Connection", "close");
