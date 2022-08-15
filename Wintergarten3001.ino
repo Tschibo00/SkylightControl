@@ -22,7 +22,7 @@
  * do double signals in one direction trigger reverse driving of skylight?
  */
 
-#define THINGER_SERIAL_DEBUG
+//#define THINGER_SERIAL_DEBUG
 //#define DEBUG_LOCAL
 
 #include <ThingerESP32.h>
@@ -35,6 +35,7 @@
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <Update.h>
+#include "Preferences.h"
 
 #define WINDOW_IGNORE -1
 #define WINDOW_OPEN 0
@@ -62,6 +63,7 @@ float HUM_HYSTERESIS=50.f;      // humidity must fall below this to re-enable hu
 long RAIN_LOCK_MS=600000;       // time after rain detection in which convenience opening is disabled
 long RAIN_THRESHOLD=1;          // threshold at which the rain counter at least has to change in the last cycle to trigger rain detection
 long RAIN_PERIOD=3600000;       // period in which rain amount is accumulated (used for pushing to thinger.io)
+Preferences prefs;
  
 Adafruit_BME280 bme;            // sensor library
 float temperature;              // environment readings
@@ -180,6 +182,7 @@ void setup() {
         if (server.argName(i)=="RAIN_THRESHOLD") RAIN_THRESHOLD=strtol(server.arg(i).c_str(),0,0);
         if (server.argName(i)=="RAIN_PERIOD") RAIN_PERIOD=strtol(server.arg(i).c_str(),0,0);
       }
+    writeConfig();
     server.sendHeader("Connection", "close");
     server.send(200, "text/html", "<html><head><meta http-equiv=\"refresh\" content=\"0; url=/config\" /></head></html>");
   });
@@ -208,10 +211,51 @@ void setup() {
     }
   });
   server.begin();
+
+  prefs.begin("config",false);
+  readConfig();
   
   attachInterrupt(PIN_RAIN, onRainTrigger, FALLING);
 
   Serial.println("Wintergarten Steuerung starting");
+}
+
+/*
+ * Reads config values & window state from preferences
+ */
+void readConfig(){
+  POLL_CYCLE_MS=prefs.getLong("POLL_CYCLE_MS",60000);
+  RAIN_PER_SIGNAL=prefs.getFloat("RAIN_PER_SIGNAL",0.01f);
+  TEMP_CLOSE_BELOW=prefs.getFloat("TEMP_CLOSE_BELOW",25.f);
+  TEMP_OPEN_ABOVE=prefs.getFloat("TEMP_OPEN_ABOVE",35.f);
+  HUM_OPEN_ABOVE=prefs.getFloat("HUM_OPEN_ABOVE",70.f);
+  HUM_HYSTERESIS=prefs.getFloat("HUM_HYSTERESIS",50.f);
+  RAIN_LOCK_MS=prefs.getLong("RAIN_LOCK_MS",600000);
+  RAIN_THRESHOLD=prefs.getLong("RAIN_THRESHOLD",1);
+  RAIN_PERIOD=prefs.getLong("RAIN_PERIOD",3600000);
+  currentWindowState=prefs.getInt("currentWindowState",WINDOW_CLOSED);
+}
+
+/*
+ * Writes config values to preferences
+ */
+void writeConfig(){
+  prefs.putLong("POLL_CYCLE_MS",POLL_CYCLE_MS);
+  prefs.putFloat("RAIN_PER_SIGNAL",RAIN_PER_SIGNAL);
+  prefs.putFloat("TEMP_CLOSE_BELOW",TEMP_CLOSE_BELOW);
+  prefs.putFloat("TEMP_OPEN_ABOVE",TEMP_OPEN_ABOVE);
+  prefs.putFloat("HUM_OPEN_ABOVE",HUM_OPEN_ABOVE);
+  prefs.putFloat("HUM_HYSTERESIS",HUM_HYSTERESIS);
+  prefs.putLong("RAIN_LOCK_MS",RAIN_LOCK_MS);
+  prefs.putLong("RAIN_THRESHOLD",RAIN_THRESHOLD);
+  prefs.putLong("RAIN_PERIOD",RAIN_PERIOD);
+}
+
+/*
+ * Writes window state to preferences
+ */
+void writeWindowState(){
+  prefs.putInt("currentWindowState",currentWindowState);
 }
 
 /*
@@ -338,6 +382,7 @@ void setWindowState(int newWindowState,bool force){
   if ((currentWindowState != newWindowState)||force) {
     setOutput(newWindowState);
     currentWindowState = newWindowState;
+    writeWindowState();
   }
 }
 
