@@ -22,7 +22,7 @@
  * do double signals in one direction trigger reverse driving of skylight?
  */
 
-//#define THINGER_SERIAL_DEBUG
+#define THINGER_SERIAL_DEBUG
 //#define DEBUG_LOCAL
 
 #include <ThingerESP32.h>
@@ -141,6 +141,10 @@ void setup() {
 
   setRelaisState(WINDOW_IGNORE);
   
+  WiFi.begin(WIFI_SSID,WIFI_PW);
+  while (WiFi.status()!=WL_CONNECTED){delay(500);Serial.print(".");}
+  Serial.println(WiFi.localIP());
+
   thing.add_wifi(WIFI_SSID, WIFI_PW);
   thing["temperature"] >> outputValue(temperature);
   thing["humidity"] >> outputValue(humidity);
@@ -149,11 +153,6 @@ void setup() {
 
   bme.begin(0x76);
 
-  WiFi.begin(WIFI_SSID,WIFI_PW);
-  while (WiFi.status()!=WL_CONNECTED){delay(500);Serial.print(".");}
-  WiFi.config(IPAddress(192,168,178,53), IPAddress(192,168,178,1), IPAddress(255,255,255,0));  
-  Serial.println(WiFi.localIP());
-  
   server.on("/", HTTP_GET, [](){
     server.sendHeader("Connection","close");
     snprintf(htmlBuf,sizeof(htmlBuf),"<html><body><h1>Aktuelle Werte</h1><table><tr><td>Temperatur</td><td>%.1f &deg;C</td></tr><tr><td>Feuchtigkeit</td><td>%.1f &percnt;</td></tr><tr><td>Luftdruck</td><td>%.1f hPa</td></tr><tr></tr><tr><td>Regen?</td><td>%d</td></tr><tr><td>Regenmenge l/h</td><td>%.2f</td></tr><tr><td>Fenster</td><td>%s</td></tr></table><br/><a href=\"/config\">Konfiguration</a><br/><a href=\"serverIndex\">OTA Update</a></body></html>",temperature,humidity,pressure,raining,rainAmount,getWindowPos());
@@ -396,6 +395,6 @@ void loop() {
     evaluteWindowPosition();
   }
 
-  server.handleClient();
   thing.handle();
+  server.handleClient();
 }
