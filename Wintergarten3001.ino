@@ -36,6 +36,7 @@
 #include <WebServer.h>
 #include <Update.h>
 #include "Preferences.h"
+#include "time.h"
 
 #define WINDOW_IGNORE -1
 #define WINDOW_OPEN 0
@@ -50,7 +51,7 @@ long POLL_CYCLE_MS=10000;       // cycle time at which conditions are evaluated.
 #define PIN_RELAIS_CLOSE 26     // relais to close the skylight
 #define PIN_RELAIS_ACTIVE 0     // 0 ACTIVE low, 1 ACTIVE high
 #define PIN_RAIN 18             // bucket simulation input pin (switch to ground, pulled-up internally)
-#define DEBOUNCE_MS 50          // Debounce period
+#define DEBOUNCE_MS 70          // Debounce period
 float RAIN_PER_SIGNAL=0.01f;    // l/m2 per rain sensor signal
 
 /*
@@ -64,7 +65,14 @@ long RAIN_LOCK_MS=600000;       // time after rain detection in which convenienc
 long RAIN_THRESHOLD=1;          // threshold at which the rain counter at least has to change in the last cycle to trigger rain detection
 long RAIN_PERIOD=3600000;       // period in which rain amount is accumulated (used for pushing to thinger.io)
 Preferences prefs;
- 
+
+/*
+ * time server stuff
+ */
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 3600;
+const int   daylightOffset_sec = 3600;
+
 Adafruit_BME280 bme;            // sensor library
 float temperature;              // environment readings
 float pressure;
@@ -222,12 +230,26 @@ void setup() {
   });
   server.begin();
 
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
   prefs.begin("config",false);
   readConfig();
   
   attachInterrupt(PIN_RAIN, onRainTrigger, FALLING);
 
   Serial.println("Wintergarten Steuerung starting");
+}
+
+/*
+ * print local time
+ */
+void printLocalTime(){
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("[ERROR] Failed to obtain time");
+    return;
+  }
+  Serial.print(&timeinfo, "%H:%M:%S %d.%m.%y ");
 }
 
 /*
@@ -244,8 +266,6 @@ void readConfig(){
   RAIN_THRESHOLD=prefs.getLong("RAIN_THRESHOLD",1);
   RAIN_PERIOD=prefs.getLong("RAIN_PERIOD",3600000);
   currentWindowState=prefs.getInt("WindowState",WINDOW_CLOSED);
-  Serial.print("read state from config ");
-  Serial.println(getWindowPos());
 }
 
 /*
@@ -268,8 +288,6 @@ void writeConfig(){
  */
 void writeWindowState(){
   prefs.putInt("WindowState",currentWindowState);
-  Serial.print("write state to config ");
-  Serial.println(getWindowPos());
 }
 
 /*
@@ -321,6 +339,7 @@ void readRainSensor(){
 
     // instantly force close if rain starts
     if (!rainClosureLocked){
+      printLocalTime();
       Serial.println("DRIVE: Forcibly closing b/c it's raining");
       setWindowState(WINDOW_CLOSED,true);
     }
@@ -363,6 +382,7 @@ void evaluteWindowPosition(){
         newState=WINDOW_CLOSED;
         tempBelowLocked=true;
         tempAboveLocked=false;
+        printLocalTime();
         Serial.println("DRIVE: Closing b/c temp too low");
       }
     }
@@ -371,6 +391,7 @@ void evaluteWindowPosition(){
         newState=WINDOW_OPEN;
         tempBelowLocked=false;
         tempAboveLocked=true;
+        printLocalTime();
         Serial.println("DRIVE: Opening b/c temp too high");
       }
     }
@@ -379,6 +400,7 @@ void evaluteWindowPosition(){
       if (!humidityLocked){
         newState=WINDOW_OPEN;
         humidityLocked=true;
+        printLocalTime();
         Serial.println("DRIVE: Opening b/c humidity too high");
       }
     }
@@ -439,6 +461,7 @@ void loop() {
     readHumiditySensor();
     calculateRainAmount();
   
+    printLocalTime();
     Serial.print("Rain ");
     Serial.print(raining);
     Serial.print(" (");
