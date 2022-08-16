@@ -46,24 +46,24 @@
  * HW parameters
  */
 #define RELAIS_ACTIVE_MS 100    // switch cycle for the relais
-long POLL_CYCLE_MS=10000;       // cycle time at which conditions are evaluated. Must be longer than the driving time of the skylight!!!
 #define PIN_RELAIS_OPEN 25      // relais to open the skylight
 #define PIN_RELAIS_CLOSE 26     // relais to close the skylight
 #define PIN_RELAIS_ACTIVE 0     // 0 ACTIVE low, 1 ACTIVE high
 #define PIN_RAIN 18             // bucket simulation input pin (switch to ground, pulled-up internally)
 #define DEBOUNCE_MS 70          // Debounce period
-float RAIN_PER_SIGNAL=0.01f;    // l/m2 per rain sensor signal
 
 /*
- * Control parameters
+ * Control parameters (default values are used, if not stored in flash (see readConfig)
  */
-float TEMP_CLOSE_BELOW=25.f;    // close the skylight below this temperature
-float TEMP_OPEN_ABOVE=35.f;     // open the skylight above this temperature
-float HUM_OPEN_ABOVE=70.f;      // open the skylight above this humidity
-float HUM_HYSTERESIS=50.f;      // humidity must fall below this to re-enable humidity opening
-long RAIN_LOCK_MS=600000;       // time after rain detection in which convenience opening is disabled
-long RAIN_THRESHOLD=1;          // threshold at which the rain counter at least has to change in the last cycle to trigger rain detection
-long RAIN_PERIOD=3600000;       // period in which rain amount is accumulated (used for pushing to thinger.io)
+long POLL_CYCLE_MS;             // cycle time at which conditions are evaluated. Must be longer than the driving time of the skylight!!!
+float RAIN_PER_SIGNAL;          // l/m2 per rain sensor signal
+float TEMP_CLOSE_BELOW;         // close the skylight below this temperature
+float TEMP_OPEN_ABOVE;          // open the skylight above this temperature
+float HUM_OPEN_ABOVE;           // open the skylight above this humidity
+float HUM_HYSTERESIS;           // humidity must fall below this to re-enable humidity opening
+long RAIN_LOCK_MS;              // time after rain detection in which convenience opening is disabled
+long RAIN_THRESHOLD;            // threshold at which the rain counter at least has to change in the last cycle to trigger rain detection
+long RAIN_PERIOD;               // period in which rain amount is accumulated (used for pushing to thinger.io)
 Preferences prefs;
 
 /*
@@ -211,6 +211,7 @@ void setup() {
   }, []() {
     HTTPUpload& upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
+      printLocalTime();
       Serial.printf("Update: %s\n", upload.filename.c_str());
       if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
         Update.printError(Serial);
@@ -222,6 +223,7 @@ void setup() {
       }
     } else if (upload.status == UPLOAD_FILE_END) {
       if (Update.end(true)) { //true to set the size to the current progress
+        printLocalTime();
         Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
       } else {
         Update.printError(Serial);
@@ -237,6 +239,7 @@ void setup() {
   
   attachInterrupt(PIN_RAIN, onRainTrigger, FALLING);
 
+  printLocalTime();
   Serial.println("Wintergarten Steuerung starting");
 }
 
@@ -249,7 +252,7 @@ void printLocalTime(){
     Serial.println("[ERROR] Failed to obtain time");
     return;
   }
-  Serial.print(&timeinfo, "%H:%M:%S %d.%m.%y ");
+  Serial.print(&timeinfo, "%H:%M:%S,%d.%m.%y ");
 }
 
 /*
