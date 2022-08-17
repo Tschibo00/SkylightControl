@@ -74,11 +74,11 @@ void calculateRainAmount(){
  */
 void setupSensor(){
   bme.begin(0x76);
-  bme.setSampling(Adafruit_BME280::MODE_FORCED,
-                  Adafruit_BME280::SAMPLING_X1, // temperature
-                  Adafruit_BME280::SAMPLING_X1, // pressure
-                  Adafruit_BME280::SAMPLING_X1, // humidity
-                  Adafruit_BME280::FILTER_OFF   );
+  bme.setSampling(Adafruit_BME280::MODE_NORMAL,
+                  Adafruit_BME280::SAMPLING_X16, // temperature
+                  Adafruit_BME280::SAMPLING_X16, // pressure
+                  Adafruit_BME280::SAMPLING_X16, // humidity
+                  Adafruit_BME280::FILTER_X16   );
   attachInterrupt(PIN_RAIN, onRainTrigger, FALLING);
 }
 
