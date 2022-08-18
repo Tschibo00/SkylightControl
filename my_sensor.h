@@ -66,6 +66,7 @@ void calculateRainAmount(){
     nextRainAccumulation=millis()+RAIN_PERIOD;
     rainAmount=(newRainBucketCount-lastAccumulatedRainValue)*RAIN_PER_SIGNAL;
     lastAccumulatedRainValue=newRainBucketCount;
+    oldRainBucketCount=newRainBucketCount;      // reset counter to remove false positives
   }
 }
 
