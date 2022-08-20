@@ -9,6 +9,7 @@
 bool humidityLocked=false;
 bool tempAboveLocked=false;
 bool tempBelowLocked=false;
+bool nightClosingDone=false;
 
 /*
  * triggers the new window state (if required)
@@ -32,9 +33,11 @@ void readRainSensor(){
     raining=true;
 
     // instantly force close if rain starts
-    if (!rainClosureLocked){
-      logln("DRIVE: Forcibly closing b/c it's raining");
-      setWindowState(WINDOW_CLOSED,true);
+    if (isDrivingAllowed()){
+      if (!rainClosureLocked){
+        logln("DRIVE: Forcibly closing b/c it's raining");
+        setWindowState(WINDOW_CLOSED,true);
+      }
     }
     unlockRainClosure=millis()+RAIN_LOCK_MS;    // extend lock time if it's still raining
     rainClosureLocked=true;
@@ -49,43 +52,57 @@ void readRainSensor(){
 void evaluteWindowPosition(){
   int newState=WINDOW_IGNORE;
 
-  if (millis()>unlockRainClosure){
-    if (rainClosureLocked){
-      rainClosureLocked=false;
-      tempBelowLocked=false;
-      tempAboveLocked=false;
-      humidityLocked=false;
-    }
-  }
-  if (!rainClosureLocked){
-    // convenience open/close
-    if (temperature<TEMP_CLOSE_BELOW){
-      if (!tempBelowLocked){
-        newState=WINDOW_CLOSED;
-        tempBelowLocked=true;
-        tempAboveLocked=false;
-        logln("DRIVE: Closing b/c temp too low");
-      }
-    }
-    if (temperature>TEMP_OPEN_ABOVE){
-      if (!tempAboveLocked){
-        newState=WINDOW_OPEN;
+  if (isDrivingAllowed()){
+    nightClosingDone=false;
+    if (millis()>unlockRainClosure){
+      if (rainClosureLocked){
+        rainClosureLocked=false;
         tempBelowLocked=false;
-        tempAboveLocked=true;
-        logln("DRIVE: Opening b/c temp too high");
+        tempAboveLocked=false;
+        humidityLocked=false;
       }
     }
-    if (humidity<HUM_HYSTERESIS)humidityLocked=false;
-    if (humidity>HUM_OPEN_ABOVE){
-      if (!humidityLocked){
-        newState=WINDOW_OPEN;
-        humidityLocked=true;
-        logln("DRIVE: Opening b/c humidity too high");
+    if (!rainClosureLocked){
+      // convenience open/close
+      if (temperature<TEMP_CLOSE_BELOW){
+        if (!tempBelowLocked){
+          newState=WINDOW_CLOSED;
+          tempBelowLocked=true;
+          tempAboveLocked=false;
+          logln("DRIVE: Closing b/c temp too low");
+        }
+      }
+      if (temperature>TEMP_OPEN_ABOVE){
+        if (!tempAboveLocked){
+          newState=WINDOW_OPEN;
+          tempBelowLocked=false;
+          tempAboveLocked=true;
+          logln("DRIVE: Opening b/c temp too high");
+        }
+      }
+      if (humidity<HUM_HYSTERESIS)humidityLocked=false;
+      if (humidity>HUM_OPEN_ABOVE){
+        if (!humidityLocked){
+          newState=WINDOW_OPEN;
+          humidityLocked=true;
+          logln("DRIVE: Opening b/c humidity too high");
+        }
       }
     }
+  
+    setWindowState(newState,false);
+  }else{
+    if (!nightClosingDone){
+      nightClosingDone=true;
+      logln("DRIVE: Forcibly closing b/c it's nighttimme");
+      setWindowState(WINDOW_CLOSED,true);
+    }
+    
+    rainClosureLocked=false;
+    tempBelowLocked=false;
+    tempAboveLocked=false;
+    humidityLocked=false;
   }
-
-  setWindowState(newState,false);
 }
 
 #endif

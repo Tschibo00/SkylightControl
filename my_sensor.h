@@ -7,6 +7,7 @@
 #include "hw_config.h"
 #include "config.h"
 #include "my_log.h"
+#include "output.h"
 
 Adafruit_BME280 bme;            // sensor library
 float temperature=30.f;         // environment readings
@@ -25,7 +26,6 @@ float rainAmount=0.f;
 long unlockRainClosure=0l;      // timing variables
 bool rainClosureLocked=false;
 long rainPerHour;
-
 
 /*
  * BME280 sensor readout functions

@@ -55,10 +55,11 @@ void setup() {
 }
 
 void loop() {
+
+  readRainSensor();
   if (millis()>=nextSensorReadout){
     nextSensorReadout=millis()+POLL_CYCLE_MS;
   
-    readRainSensor();
     readTemperatureSensor();
     readPressureSensor();
     readHumiditySensor();

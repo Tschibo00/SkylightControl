@@ -26,9 +26,20 @@ void printLocalTime(){
     Serial.println("[ERROR] Failed to obtain time");
     return;
   }
-  Serial.print(millis()%1000);
-  Serial.print(" ");
   Serial.print(&timeinfo, "%H:%M:%S,%d.%m.%y ");
+}
+
+/*
+ * checks, if convenience opening/closing skylight is allowed {i.e. it is daytime :-)
+ */
+bool isDrivingAllowed(){
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("[ERROR] Failed to obtain time");
+    return true;
+  }
+  if ((timeinfo.tm_hour>=9)&&(timeinfo.tm_hour<21))return true;
+  return false;
 }
 
 #endif
