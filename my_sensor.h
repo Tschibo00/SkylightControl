@@ -9,10 +9,12 @@
 #include "my_log.h"
 
 Adafruit_BME280 bme;            // sensor library
-float temperature;              // environment readings
-float pressure;
-float humidity;
+float temperature=30.f;         // environment readings
+float pressure=940.f;
+float humidity=40.f;
 bool raining=false;
+
+bool isSensorValid=true;
 
 long oldRainBucketCount=0l;     // used to calculate if rain starts falling
 long newRainBucketCount=0l;     // increased by interrupt
@@ -32,19 +34,19 @@ void readTemperatureSensor(){                      // in degree C
   #ifdef DEBUG_LOCAL
   temperature=((float)analogRead(PIN_DEBUG_TEMP))/200.f+20.f;
   #else
-  temperature=bme.readTemperature();
+  if (isSensorValid)temperature=bme.readTemperature();
   #endif
 }
 
 void readPressureSensor(){                         // in hPa
-  pressure=bme.readPressure()/100.f;
+  if (isSensorValid)pressure=bme.readPressure()/100.f;
 }
 
 void readHumiditySensor(){                         // in Percent
   #ifdef DEBUG_LOCAL
   humidity=((float)analogRead(PIN_DEBUG_HUM))/41.f;
   #else
-  humidity=bme.readHumidity();
+  if (isSensorValid)humidity=bme.readHumidity();
   #endif
 }
 
@@ -74,7 +76,11 @@ void calculateRainAmount(){
  * called in setup function
  */
 void setupSensor(){
-  bme.begin(0x76);
+  unsigned status=bme.begin(0x76);
+  if (!status){
+    Serial.println("Could not find a valid BME280 sensor");
+    isSensorValid=false;
+  }
   bme.setSampling(Adafruit_BME280::MODE_NORMAL,
                   Adafruit_BME280::SAMPLING_X16, // temperature
                   Adafruit_BME280::SAMPLING_X16, // pressure
