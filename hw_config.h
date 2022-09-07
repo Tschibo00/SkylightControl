@@ -13,7 +13,6 @@
 #define PIN_RELAIS_CLOSE 26     // relais to close the skylight
 #define PIN_RELAIS_ACTIVE 0     // 0 ACTIVE low, 1 ACTIVE high
 #define PIN_RAIN 18             // bucket simulation input pin (switch to ground, pulled-up internally)
-#define DEBOUNCE_MS 90          // Debounce period
 #define PIN_DEBUG_TEMP 34       // pin to connect temp pot for debugging (define DEBUG_LOCAL to enable)
 #define PIN_DEBUG_HUM 35        // pin to connect humidity pot for debugging (define DEBUG_LOCAL to enable)
 

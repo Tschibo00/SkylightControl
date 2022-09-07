@@ -9,6 +9,7 @@
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 3600;
 const int   daylightOffset_sec = 3600;
+struct tm timeinfo;
 
 /*
  * called in setup function
@@ -21,7 +22,6 @@ void setupLocalTime(){
  * print local time
  */
 void printLocalTime(){
-  struct tm timeinfo;
   if(!getLocalTime(&timeinfo)){
     Serial.println("[ERROR] Failed to obtain time");
     return;
@@ -33,7 +33,6 @@ void printLocalTime(){
  * checks, if convenience opening/closing skylight is allowed {i.e. it is daytime :-)
  */
 bool isDrivingAllowed(){
-  struct tm timeinfo;
   if(!getLocalTime(&timeinfo)){
     Serial.println("[ERROR] Failed to obtain time");
     return true;

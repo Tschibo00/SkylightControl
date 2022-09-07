@@ -16,6 +16,13 @@ float HUM_HYSTERESIS;           // humidity must fall below this to re-enable hu
 long RAIN_LOCK_MS;              // time after rain detection in which convenience opening is disabled
 long RAIN_THRESHOLD;            // threshold at which the rain counter at least has to change in the last cycle to trigger rain detection
 long RAIN_PERIOD;               // period in which rain amount is accumulated (used for pushing to thinger.io)
+long DEBOUNCE_MS;               // Debounce period
+long LIGHT_LOWEST;              // lowest possible light sensor reading
+long LIGHT_HIGHEST;             // highest possible light sensor reading
+float LIGHT_EXPONENT;           // exponent to be used to light calculation (1=linear, >1 exponential, <1 logarithmic)
+long LUM_LOWEST;                // lowest luminance setting for clock (at minimal light level), range 0-255
+long LUM_HIGHEST;               // highest luminance setting for clock (at maximum light level), range 0-255
+float TEMP_LUM_CORRECTION;      // degrees to be substracted at maximum light level, linearly decreased with decreasing light level
 Preferences prefs;
 
 /*
@@ -31,6 +38,13 @@ void readConfig(){
   RAIN_LOCK_MS=prefs.getLong("RAIN_LOCK_MS",600000);
   RAIN_THRESHOLD=prefs.getLong("RAIN_THRESHOLD",1);
   RAIN_PERIOD=prefs.getLong("RAIN_PERIOD",3600000);
+  DEBOUNCE_MS=prefs.getLong("DEBOUNCE_MS",90);
+  LIGHT_LOWEST=prefs.getLong("LIGHT_LOWEST",0);
+  LIGHT_HIGHEST=prefs.getLong("LIGHT_HIGHEST",2048);
+  LIGHT_EXPONENT=prefs.getFloat("LIGHT_EXP",3.f);
+  LUM_LOWEST=prefs.getLong("LUM_LOWEST",1);
+  LUM_HIGHEST=prefs.getLong("LUM_HIGHEST",255);
+  TEMP_LUM_CORRECTION=prefs.getFloat("TEMP_LUM",5.f);
   currentWindowState=prefs.getInt("WindowState",WINDOW_CLOSED);
 }
 
@@ -47,6 +61,13 @@ void writeConfig(){
   prefs.putLong("RAIN_LOCK_MS",RAIN_LOCK_MS);
   prefs.putLong("RAIN_THRESHOLD",RAIN_THRESHOLD);
   prefs.putLong("RAIN_PERIOD",RAIN_PERIOD);
+  prefs.putLong("DEBOUNCE_MS",DEBOUNCE_MS);
+  prefs.putLong("LIGHT_LOWEST",LIGHT_LOWEST);
+  prefs.putLong("LIGHT_HIGHEST",LIGHT_HIGHEST);
+  prefs.putFloat("LIGHT_EXP",LIGHT_EXPONENT);
+  prefs.putLong("LUM_LOWEST",LUM_LOWEST);
+  prefs.putLong("LUM_HIGHEST",LUM_HIGHEST);
+  prefs.putFloat("TEMP_LUM",TEMP_LUM_CORRECTION);
 }
 
 /*
