@@ -5,7 +5,6 @@
 #define LED_TYPE    WS2811
 #define COLOR_ORDER GRB
 #define NUM_LEDS    128
-#define BRIGHTNESS          20
 #define FRAMES_PER_SECOND  30
 
 CRGB leds[NUM_LEDS];
@@ -21,7 +20,7 @@ void initDisplayController(){
 		leds[i] = CRGB::Black;
 	}
   FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(copyBuffer, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  FastLED.setBrightness(BRIGHTNESS);
+  FastLED.setBrightness(1);
 }
 
 void displayShow(){
@@ -29,6 +28,10 @@ void displayShow(){
     for (uint8_t x=0;x<16;x++)
       copyBuffer[x*8+7-y]=leds[x+y*16];
   FastLED.show();  
+}
+
+void setBrightness(int b){
+  FastLED.setBrightness(b);
 }
 
 void clear(CRGB color){

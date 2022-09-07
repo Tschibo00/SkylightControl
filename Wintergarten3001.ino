@@ -103,6 +103,7 @@ void loop() {
     set(8,5,CRGB::DarkGray);
   }
   displayShow();
+  setBrightness(getBrightnessFromLightLevel());
 
   thingerHandle();
   serverHandle();

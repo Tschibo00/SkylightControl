@@ -26,6 +26,8 @@ void copy(const uint8_t *source);
 void showDigit(char row, char number);
 void showNumber(int number);*/
 
+void setBrightness(int b);
+
 void showNumber37(int8_t num);
 
 void showScroller(const char *text, int scrollPos, bool smooth, CRGB color);

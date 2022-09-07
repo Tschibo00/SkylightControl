@@ -27,6 +27,43 @@ long unlockRainClosure=0l;      // timing variables
 bool rainClosureLocked=false;
 long rainPerHour;
 
+long lastLightSensorReading=0L;      // light sensor values
+int lightLevelRaw[10];              // raw value from analogRead
+uint8_t lightArrayPtr=0;
+float lightLevelFloat;          // corrected values (0.0-1.0)
+
+/*
+ * Reads analog value of light sensor (every second to avoid lag)
+ */
+float getLightSensorReading(){
+  if (millis()>lastLightSensorReading+1000){
+    lightLevelRaw[lightArrayPtr]=analogRead(PIN_LIGHT_SENSOR);
+    lightArrayPtr=(lightArrayPtr+1)%10;
+    float medLightLevel=0.f;
+    for (uint8_t i=0;i<10;i++)
+      medLightLevel+=lightLevelRaw[i];
+    medLightLevel=medLightLevel/10.f;
+    lightLevelFloat=((float)(medLightLevel-LIGHT_LOWEST))/((float)(LIGHT_HIGHEST-LIGHT_LOWEST));
+    if (lightLevelFloat<0.f) lightLevelFloat=0.f;
+    if (lightLevelFloat>1.f) lightLevelFloat=1.f;
+    lightLevelFloat=pow(lightLevelFloat,LIGHT_EXPONENT);
+    lastLightSensorReading=millis();
+    Serial.printf("Raw value %.0f light %.2f\n",medLightLevel,lightLevelFloat);
+  }
+  return lightLevelFloat;
+}
+
+/*
+ * converts light level to luminance value for display
+ */
+int getBrightnessFromLightLevel(){
+  float range=LUM_HIGHEST-LUM_LOWEST;
+  int val=getLightSensorReading()*range+LUM_LOWEST;
+  if (val<0)val=0;
+  if (val>255)val=255;
+  return val;
+}
+ 
 /*
  * BME280 sensor readout functions
  */
@@ -34,7 +71,7 @@ void readTemperatureSensor(){                      // in degree C
   #ifdef DEBUG_LOCAL
   temperature=((float)analogRead(PIN_DEBUG_TEMP))/200.f+20.f;
   #else
-  if (isSensorValid)temperature=bme.readTemperature();
+  if (isSensorValid)temperature=bme.readTemperature()-getLightSensorReading()*TEMP_LUM_CORRECTION;
   #endif
 }
 

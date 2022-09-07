@@ -15,6 +15,7 @@
 #define PIN_RAIN 18             // bucket simulation input pin (switch to ground, pulled-up internally)
 #define PIN_DEBUG_TEMP 34       // pin to connect temp pot for debugging (define DEBUG_LOCAL to enable)
 #define PIN_DEBUG_HUM 35        // pin to connect humidity pot for debugging (define DEBUG_LOCAL to enable)
+#define PIN_LIGHT_SENSOR 33     // pin to connect to anode of light sensing LED (cathode goes to ground)
 
 /*
  * called in setup function
