@@ -10,10 +10,15 @@
 CRGB leds[NUM_LEDS];
 CRGB copyBuffer[NUM_LEDS];
 
+CRGB dotColor=CRGB(128,128,128);
+CRGB clockColor=CRGB::Red;
+
 uint8_t levels8[8]={0,1,2,7,15,40,100,255};
 uint8_t levels4[4]={0,4,80,255};
 
 uint8_t displayWait = 1;
+
+long lastTimeUpdate=0L;
 
 void initDisplayController(){
 	for (uint8_t i = 0; i < NUM_LEDS; i++) {
@@ -382,4 +387,23 @@ CRGB fadeTowardColor( CRGB& cur, const CRGB& target, uint8_t amount)
   nblendU8TowardU8( cur.green, target.green, amount);
   nblendU8TowardU8( cur.blue,  target.blue,  amount);
   return cur;
+}
+
+void showTime(tm t){
+  if (millis()<lastTimeUpdate+100)return;
+  lastTimeUpdate=millis();
+
+  clear(CRGB::Black);
+  if (t.tm_hour>9)
+    showDigit37(t.tm_hour/10, clockColor,0);
+  showDigit37(t.tm_hour%10, clockColor,4);
+  showDigit37(t.tm_min/10, clockColor,9);
+  showDigit37(t.tm_min%10, clockColor,13);
+  if ((millis()/500)%2==0){
+    set(7,3,dotColor);
+    set(8,3,dotColor);
+    set(7,5,dotColor);
+    set(8,5,dotColor);
+  }
+  displayShow();
 }

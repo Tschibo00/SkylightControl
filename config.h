@@ -40,11 +40,11 @@ void readConfig(){
   RAIN_PERIOD=prefs.getLong("RAIN_PERIOD",3600000);
   DEBOUNCE_MS=prefs.getLong("DEBOUNCE_MS",90);
   LIGHT_LOWEST=prefs.getLong("LIGHT_LOWEST",0);
-  LIGHT_HIGHEST=prefs.getLong("LIGHT_HIGHEST",2048);
-  LIGHT_EXPONENT=prefs.getFloat("LIGHT_EXP",3.f);
-  LUM_LOWEST=prefs.getLong("LUM_LOWEST",1);
+  LIGHT_HIGHEST=prefs.getLong("LIGHT_HIGHEST",2300);
+  LIGHT_EXPONENT=prefs.getFloat("LIGHT_EXP",2.f);
+  LUM_LOWEST=prefs.getLong("LUM_LOWEST",2);
   LUM_HIGHEST=prefs.getLong("LUM_HIGHEST",255);
-  TEMP_LUM_CORRECTION=prefs.getFloat("TEMP_LUM",5.f);
+  TEMP_LUM_CORRECTION=prefs.getFloat("TEMP_LUM",7.f);
   currentWindowState=prefs.getInt("WindowState",WINDOW_CLOSED);
 }
 

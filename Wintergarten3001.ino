@@ -82,27 +82,8 @@ void loop() {
   
     evaluteWindowPosition();
   }
-/*
-  if (millis()%100==0)
-  Serial.println(analogRead(33)); // reads values between 0 (cellar stairs in bright daylight) and around 2100 in sunlight
-*/
-// TODO move to separate file
-// TODO add refreshing the display only if required
-// TODO add luminance control
-// TODO add temperature compensation, based on luminance (maybe)
-  clear(CRGB::Black);
-  if (timeinfo.tm_hour>9)
-    showDigit37(timeinfo.tm_hour/10, CRGB::Red,0);
-  showDigit37(timeinfo.tm_hour%10, CRGB::Red,4);
-  showDigit37(timeinfo.tm_min/10, CRGB::Red,9);
-  showDigit37(timeinfo.tm_min%10, CRGB::Red,13);
-  if ((millis()/500)%2==0){
-    set(7,3,CRGB::DarkGray);
-    set(8,3,CRGB::DarkGray);
-    set(7,5,CRGB::DarkGray);
-    set(8,5,CRGB::DarkGray);
-  }
-  displayShow();
+
+  showTime(timeinfo);
   setBrightness(getBrightnessFromLightLevel());
 
   thingerHandle();
