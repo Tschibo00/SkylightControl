@@ -66,7 +66,7 @@ const char* getWindowPos(){
 void setupServer(){
   server.on("/", HTTP_GET, [](){
     server.sendHeader("Connection","close");
-    snprintf(htmlBuf,sizeof(htmlBuf),"<html><body><h1>Aktuelle Werte</h1><table><tr><td>Temperatur</td><td>%.1f &deg;C</td></tr><tr><td>Feuchtigkeit</td><td>%.1f &percnt;</td></tr><tr><td>Luftdruck</td><td>%.1f hPa</td></tr><tr></tr><tr><td>Regen?</td><td>%d</td></tr><tr><td>Regenmenge l/h</td><td>%.2f</td></tr><tr><td>Fenster</td><td>%s</td></tr></table><br/><a href=\"/config\">Konfiguration</a><br/><a href=\"serverIndex\">OTA Update</a></body></html>",temperature,humidity,pressure,raining,rainAmount,getWindowPos());
+    snprintf(htmlBuf,sizeof(htmlBuf),"<html><body><h1>Aktuelle Werte</h1><table><tr><td>Temperatur</td><td>%.1f &deg;C</td></tr><tr><td>Feuchtigkeit</td><td>%.1f &percnt;</td></tr><tr><td>Luftdruck</td><td>%.1f hPa</td></tr><tr></tr><tr><td>Regen?</td><td>%d</td></tr><tr><td>Regenmenge l/h</td><td>%.2f</td></tr><tr><td>Fenster</td><td>%s</td></tr><tr><td>Licht</td><td>%.2f (roh %.0f)</td></tr></table><br/><a href=\"/config\">Konfiguration</a><br/><a href=\"serverIndex\">OTA Update</a></body></html>",temperature,humidity,pressure,raining,rainAmount,getWindowPos(),lightLevelFloat,medLightLevel);
     server.send(200,"text/html",htmlBuf);
   });
   server.on("/serverIndex", HTTP_GET, []() {

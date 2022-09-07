@@ -31,6 +31,7 @@ long lastLightSensorReading=0L;      // light sensor values
 int lightLevelRaw[10];              // raw value from analogRead
 uint8_t lightArrayPtr=0;
 float lightLevelFloat;          // corrected values (0.0-1.0)
+float medLightLevel;
 
 /*
  * Reads analog value of light sensor (every second to avoid lag)
@@ -39,7 +40,7 @@ float getLightSensorReading(){
   if (millis()>lastLightSensorReading+1000){
     lightLevelRaw[lightArrayPtr]=analogRead(PIN_LIGHT_SENSOR);
     lightArrayPtr=(lightArrayPtr+1)%10;
-    float medLightLevel=0.f;
+    medLightLevel=0.f;
     for (uint8_t i=0;i<10;i++)
       medLightLevel+=lightLevelRaw[i];
     medLightLevel=medLightLevel/10.f;
