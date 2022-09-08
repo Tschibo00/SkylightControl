@@ -49,7 +49,6 @@ float getLightSensorReading(){
     if (lightLevelFloat>1.f) lightLevelFloat=1.f;
     lightLevelFloat=pow(lightLevelFloat,LIGHT_EXPONENT);
     lastLightSensorReading=millis();
-    Serial.printf("Raw value %.0f light %.2f\n",medLightLevel,lightLevelFloat);
   }
   return lightLevelFloat;
 }

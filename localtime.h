@@ -19,6 +19,16 @@ void setupLocalTime(){
 }
 
 /*
+ * update the time
+ */
+void updateTime(){
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("[ERROR] Failed to obtain time");
+    return;
+  }
+}
+
+/*
  * print local time
  */
 void printLocalTime(){

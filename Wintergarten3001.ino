@@ -12,13 +12,11 @@
  * wire rain sensor as follows
  * bucket contact - 18
  * 
+ * Array of 16*8 ws2812 is connected to pin 13
+ * wire ultra-bright clear LED as light sensor with anode to pin 33 and cathode to gnd
+ * 
  * For local debugging attach pots to 34+35 for temperature and humidity
  * define DEBUG_LOCAL to enable local debugging via pots
- */
-
-/*
- * TODOs HW check
- * do double signals in one direction trigger reverse driving of skylight?
  */
 
 //#define THINGER_SERIAL_DEBUG
@@ -39,6 +37,7 @@
 #include "DisplayController.h"
 
 long nextSensorReadout=0l;
+long nextTimeUpdate=0l;
 
 void setup() {
   Serial.begin(115200);
@@ -83,6 +82,10 @@ void loop() {
     evaluteWindowPosition();
   }
 
+  if (millis()>=nextTimeUpdate){
+    nextTimeUpdate=millis()+1000;
+    updateTime();
+  }
   showTime(timeinfo);
   setBrightness(getBrightnessFromLightLevel());
 
