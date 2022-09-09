@@ -183,6 +183,12 @@ void showTime(tm t){
   for (uint8_t buf=0;buf<2;buf++){
     if (fader==0){
       hsv2rgb_rainbow(clockColor[buf],clockColorRGB);
+      if((clockColorRGB.r<128)&&(clockColorRGB.g<128)&&(clockColorRGB.b<128)){//correct colors, that may be reduced to black at minimum brightness (2)
+        if(clockColorRGB.r>120)clockColorRGB.r=128;
+        if(clockColorRGB.g>120)clockColorRGB.g=128;
+        if(clockColorRGB.b>120)clockColorRGB.b=128;
+      }
+
       clear(CRGB::Black,buf);
       if (t.tm_hour>9)
         showDigit37(t.tm_hour/10, clockColorRGB,0,buf);
