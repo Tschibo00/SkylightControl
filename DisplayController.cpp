@@ -20,6 +20,8 @@ uint8_t curBuffer=0;
 uint8_t fader=0;      // 0=no fading, 1..39=fading
 uint8_t lastSec=0;
 
+uint8_t shuffle[32];
+
 long lastTimeUpdate=0L;
 
 void initDisplayController(){
@@ -28,6 +30,20 @@ void initDisplayController(){
 	}
   clockColor[0]=CHSV(0,255,255);
   clockColor[1]=CHSV(128,255,255);
+
+  int i=0;
+  uint8_t r;
+  uint8_t o;
+  for (uint8_t y=0;y<8;y+=2)
+    for (uint8_t x=0;x<16;x+=2)
+      shuffle[i++]=x*8+y;
+  for (i=0;i<1000;i++){
+    r=random(32);
+    o=shuffle[i%32];
+    shuffle[i%32]=shuffle[r];
+    shuffle[r]=o;
+  }
+      
   FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(copyBuffer, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(1);
 }
@@ -44,7 +60,15 @@ void displayShow(){
 }
 
 void setBrightness(int b){
-  FastLED.setBrightness(b);
+  int bn=b;
+  if(bn<0)bn=0;
+  if(bn>255)bn=255;
+  FastLED.setBrightness(bn);
+}
+
+void clearCopyBuffer(){
+  for (uint8_t i = 0; i < NUM_LEDS; i++)
+    copyBuffer[i]=CRGB::Black;  
 }
 
 void clear(CRGB color,uint8_t buffer){
@@ -194,8 +218,7 @@ void showTime(tm t){
 if (fader==0){
     curBuffer=(t.tm_min/5)%2;// pause switching buffers until fading is done
     clockColor[!curBuffer]=CHSV((clockColor[curBuffer].h+random(98,198))%256,random(170,255),255);// move the hue more or less on the opposite site with a sight offset to advance enough
-//    curEffect=random(10);
-curEffect=4;
+    curEffect=random(10);
   }
  
   displayShow();
@@ -203,11 +226,14 @@ curEffect=4;
   lastSec=t.tm_sec;
 }
 
+int clipTo15(int i){
+  if (i<0)return 0;
+  if (i>15)return 15;
+  return i;
+}
 // ============= effects section used to blend between clock colors
 void calcEffect(){
-  int8_t f=(fader-8)/2;
-  if (f<0)f=0;
-  if (f>15)f=15;
+  int8_t f=clipTo15((fader-8)/2);
   switch(curEffect){
     case 0:
       for (uint8_t y=0;y<8;y++)
@@ -231,9 +257,9 @@ void calcEffect(){
       for (uint8_t y=0;y<8;y++)
         for (uint8_t x=0;x<16;x++)
           if (fader<20)
-            copyBuffer[x*8+7-y]=blend(leds[x+y*16+(f>x)],CRGB::White,fader*12);
+            copyBuffer[x*8+7-y]=blend(leds[x+y*16],CRGB::DarkRed,fader*12);
           else
-            copyBuffer[x*8+7-y]=blend(leds[x+y*16+(f>x)*NUM_LEDS],CRGB::White,(39-fader)*12);
+            copyBuffer[x*8+7-y]=blend(leds[x+y*16+NUM_LEDS],CRGB::DarkRed,(39-fader)*12);
       break;
     case 4:
       for (uint8_t y=0;y<8;y++)
@@ -241,14 +267,50 @@ void calcEffect(){
           copyBuffer[x*8+7-y]=blend(leds[x+y*16],leds[x+y*16+NUM_LEDS],fader*6);
       break;
     case 5:
+      clearCopyBuffer();
+      for (uint8_t y=0;y<8;y++)
+          if (f<8)
+            for (uint8_t x=0;x<16-f*2;x++)
+              copyBuffer[clipTo15(x+f)*8+7-y]=leds[x+y*16];
+          else
+            for (uint8_t x=0;x<f*2-14;x++)
+              copyBuffer[clipTo15(x+15-f)*8+7-y]=leds[x+y*16+NUM_LEDS];
       break;
     case 6:
+      for (uint8_t y=0;y<8;y++)
+        for (uint8_t x=0;x<16;x++)
+          if (fader<20)
+            copyBuffer[x*8+7-y]=blend(leds[x+y*16],CRGB::Black,fader*12);
+          else
+            copyBuffer[x*8+7-y]=blend(leds[x+y*16+NUM_LEDS],CRGB::Black,(39-fader)*12);
       break;
     case 7:
+      for (uint8_t y=0;y<8;y++)
+        for (uint8_t x=0;x<16;x++)
+          if (fader<20)
+            copyBuffer[x*8+7-y]=blend(leds[x+y*16],CRGB::DarkGreen,fader*12);
+          else
+            copyBuffer[x*8+7-y]=blend(leds[x+y*16+NUM_LEDS],CRGB::DarkGreen,(39-fader)*12);
       break;
     case 8:
+      for (uint8_t y=0;y<8;y++)
+        for (uint8_t x=0;x<16;x++)
+          if (fader<20)
+            copyBuffer[x*8+7-y]=blend(leds[x+y*16],CRGB::DarkBlue,fader*12);
+          else
+            copyBuffer[x*8+7-y]=blend(leds[x+y*16+NUM_LEDS],CRGB::DarkBlue,(39-fader)*12);
       break;
     case 9:
+      for (uint8_t y=0;y<8;y++)
+        for (uint8_t x=0;x<16;x++)
+          copyBuffer[x*8+7-y]=leds[x+y*16];
+      if (fader>=8)
+        for (uint8_t i=0;i<=fader-8;i++){
+          copyBuffer[shuffle[i]]=leds[shuffle[i]/8+(7-shuffle[i]%8)*16+NUM_LEDS];
+          copyBuffer[shuffle[i]+8]=leds[shuffle[i]/8+(7-shuffle[i]%8)*16+1+NUM_LEDS];
+          copyBuffer[shuffle[i]+1]=leds[shuffle[i]/8+(7-shuffle[i]%8)*16-16+NUM_LEDS];
+          copyBuffer[shuffle[i]+9]=leds[shuffle[i]/8+(7-shuffle[i]%8)*16-15+NUM_LEDS];
+        }
       break;
     default:
       Serial.printf("Unknown effect %d\n",curEffect);

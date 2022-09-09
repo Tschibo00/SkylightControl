@@ -26,13 +26,13 @@ bool updateTime(){
     Serial.println("[ERROR] Failed to obtain time");
     return false;
   }
-
+/*
   // fake daytime to test color fading effects
   long v=(millis()/1000)%10;
   timeinfo.tm_min=4+(v>=5);
   timeinfo.tm_sec=(55+v)%60;
   // end of time faking
-
+*/
   return true;
 }
 
