@@ -1,5 +1,4 @@
 #include "DisplayController.h"
-//#include "font.h"
 
 #define DATA_PIN    13
 #define LED_TYPE    WS2811
@@ -13,6 +12,7 @@ CRGB copyBuffer[NUM_LEDS];
 
 CRGB dotColor=CRGB(128,128,128);
 CHSV clockColor[2];
+uint8_t curEffect=0;
 
 uint8_t levels8[8]={0,1,2,7,15,40,100,255};
 uint8_t levels4[4]={0,4,80,255};
@@ -33,9 +33,13 @@ void initDisplayController(){
 }
 
 void displayShow(){
-  for (uint8_t y=0;y<8;y++)
-    for (uint8_t x=0;x<16;x++)
-      copyBuffer[x*8+7-y]=leds[x+y*16+curBuffer*NUM_LEDS];
+
+  if (fader>0)
+    calcEffect();
+  else
+    for (uint8_t y=0;y<8;y++)
+      for (uint8_t x=0;x<16;x++)
+        copyBuffer[x*8+7-y]=leds[x+y*16+curBuffer*NUM_LEDS];
   FastLED.show();  
 }
 
@@ -153,18 +157,30 @@ void showTime(tm t){
 
   CRGB clockColorRGB;
   for (uint8_t buf=0;buf<2;buf++){
-    hsv2rgb_rainbow(clockColor[buf],clockColorRGB);
-    clear(CRGB::Black,buf);
-    if (t.tm_hour>9)
-      showDigit37(t.tm_hour/10, clockColorRGB,0,buf);
-    showDigit37(t.tm_hour%10, clockColorRGB,4,buf);
-    showDigit37(t.tm_min/10, clockColorRGB,9,buf);
-    showDigit37(t.tm_min%10, clockColorRGB,13,buf);
+    if (fader==0){
+      hsv2rgb_rainbow(clockColor[buf],clockColorRGB);
+      clear(CRGB::Black,buf);
+      if (t.tm_hour>9)
+        showDigit37(t.tm_hour/10, clockColorRGB,0,buf);
+      showDigit37(t.tm_hour%10, clockColorRGB,4,buf);
+      if ((buf!=curBuffer)&&(t.tm_sec==59)){
+        showDigit37((t.tm_min+1)/10, clockColorRGB,9,buf);
+        showDigit37((t.tm_min+1)%10, clockColorRGB,13,buf);
+      } else {
+        showDigit37(t.tm_min/10, clockColorRGB,9,buf);
+        showDigit37(t.tm_min%10, clockColorRGB,13,buf);
+      }
+    }
     if ((millis()/500)%2==0){
       set(7,3,dotColor,buf);
       set(8,3,dotColor,buf);
       set(7,5,dotColor,buf);
       set(8,5,dotColor,buf);
+    }else{
+      set(7,3,CRGB::Black,buf);
+      set(8,3,CRGB::Black,buf);
+      set(7,5,CRGB::Black,buf);
+      set(8,5,CRGB::Black,buf);
     }
   }
 
@@ -175,12 +191,67 @@ void showTime(tm t){
     fader=(fader+1)%40;
   if ((t.tm_min%5==4)&&(t.tm_sec==59)&&(lastSec==58))fader=1;
 
+if (fader==0){
+    curBuffer=(t.tm_min/5)%2;// pause switching buffers until fading is done
+    clockColor[!curBuffer]=CHSV((clockColor[curBuffer].h+random(98,198))%256,random(170,255),255);// move the hue more or less on the opposite site with a sight offset to advance enough
+//    curEffect=random(10);
+curEffect=4;
+  }
+ 
   displayShow();
   
-  if (fader==0){
-    curBuffer=(t.tm_min/5)%2;// pause switching buffers until fading is done
-    clockColor[!curBuffer]=CHSV((clockColor[curBuffer].h+random(88,168))%256,random(100,255),255);
-  }
-    
   lastSec=t.tm_sec;
+}
+
+// ============= effects section used to blend between clock colors
+void calcEffect(){
+  int8_t f=(fader-8)/2;
+  if (f<0)f=0;
+  if (f>15)f=15;
+  switch(curEffect){
+    case 0:
+      for (uint8_t y=0;y<8;y++)
+        for (uint8_t x=0;x<16;x++)
+          copyBuffer[x*8+7-y]=leds[x+y*16+(f>x)*NUM_LEDS];
+      break;
+    case 1:
+      for (uint8_t y=0;y<8;y++)
+        for (uint8_t x=0;x<16;x++)
+          copyBuffer[x*8+7-y]=leds[x+y*16+(fader-16>y)*NUM_LEDS];
+      break;
+    case 2:
+      for (uint8_t y=0;y<8;y++)
+        for (uint8_t x=0;x<16;x++)
+          if (x>15-f)
+            copyBuffer[x*8+7-y]=leds[x-(16-f)+y*16+NUM_LEDS];
+          else
+            copyBuffer[x*8+7-y]=leds[x+f+y*16];
+      break;
+    case 3:
+      for (uint8_t y=0;y<8;y++)
+        for (uint8_t x=0;x<16;x++)
+          if (fader<20)
+            copyBuffer[x*8+7-y]=blend(leds[x+y*16+(f>x)],CRGB::White,fader*12);
+          else
+            copyBuffer[x*8+7-y]=blend(leds[x+y*16+(f>x)*NUM_LEDS],CRGB::White,(39-fader)*12);
+      break;
+    case 4:
+      for (uint8_t y=0;y<8;y++)
+        for (uint8_t x=0;x<16;x++)
+          copyBuffer[x*8+7-y]=blend(leds[x+y*16],leds[x+y*16+NUM_LEDS],fader*6);
+      break;
+    case 5:
+      break;
+    case 6:
+      break;
+    case 7:
+      break;
+    case 8:
+      break;
+    case 9:
+      break;
+    default:
+      Serial.printf("Unknown effect %d\n",curEffect);
+      break;
+  }
 }

@@ -18,4 +18,6 @@ void set(int x, int y, CRGB color,uint8_t buffer);
 void showDigit37(uint8_t num, CRGB c, uint8_t x,uint8_t buffer);
 void showTime(tm t);
 
+void calcEffect();
+
 #endif
