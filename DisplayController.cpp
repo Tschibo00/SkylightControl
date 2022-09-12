@@ -175,14 +175,53 @@ void showDigit37(uint8_t num, CRGB c, uint8_t x,uint8_t buffer){
   }
 }
 
+float htr(int i){
+  if (i<=0)return 0.f;
+  if (i>=129)return 0.f;
+  if ((i>=43)&&(i<=86))return 1.f;
+  if (i<43)return ((float)i)/43.f;
+  if (i>86)return ((float)(128-i))/43.f;
+}
+
+void hsvToRgb(CHSV cIn,CRGB cOut){
+  float w=255-cIn.s;
+  float r=htr(cIn.h-86)*255.f+w;
+  float g=htr(cIn.h)*255.f+w;
+  float b=htr(cIn.h+86)*255.f+w;
+  if(r<0.f)r=0.f;
+  if(g<0.f)g=0.f;
+  if(b<0.f)b=0.f;
+  if(r>255.f)r=255.f;
+  if(g>255.f)g=255.f;
+  if(b>255.f)b=255.f;
+  cOut.r=r;
+  cOut.g=g;
+  cOut.b=b;
+
+  /*
+0   rd | \ 0
+43  yl / | 0
+86  gr 0 | \
+129 tr 0 / |
+172 bl \ 0 |
+215 pi | 0 /
+*/
+
+
+  
+}
+
 void showTime(tm t){
   if (millis()<lastTimeUpdate+LIGHT_CYCLE)return;
   lastTimeUpdate=millis();
 
   CRGB clockColorRGB;
+  uint8_t m,h;
   for (uint8_t buf=0;buf<2;buf++){
+    m=t.tm_min;
+    h=t.tm_hour;
     if (fader==0){
-      hsv2rgb_rainbow(clockColor[buf],clockColorRGB);
+      hsvToRgb(clockColor[buf],clockColorRGB);
       if((clockColorRGB.r<128)&&(clockColorRGB.g<128)&&(clockColorRGB.b<128)){//correct colors, that may be reduced to black at minimum brightness (2)
         if(clockColorRGB.r>120)clockColorRGB.r=128;
         if(clockColorRGB.g>120)clockColorRGB.g=128;
@@ -190,16 +229,20 @@ void showTime(tm t){
       }
 
       clear(CRGB::Black,buf);
-      if (t.tm_hour>9)
-        showDigit37(t.tm_hour/10, clockColorRGB,0,buf);
-      showDigit37(t.tm_hour%10, clockColorRGB,4,buf);
       if ((buf!=curBuffer)&&(t.tm_sec==59)){
-        showDigit37((t.tm_min+1)/10, clockColorRGB,9,buf);
-        showDigit37((t.tm_min+1)%10, clockColorRGB,13,buf);
-      } else {
-        showDigit37(t.tm_min/10, clockColorRGB,9,buf);
-        showDigit37(t.tm_min%10, clockColorRGB,13,buf);
+        if (m==59){
+          m=0;
+          h++;
+        }else{
+          m++;
+        }
       }
+      
+      if (h>9)
+        showDigit37(h/10, clockColorRGB,0,buf);
+      showDigit37(h%10, clockColorRGB,4,buf);
+      showDigit37(m/10, clockColorRGB,9,buf);
+      showDigit37(m%10, clockColorRGB,13,buf);
     }
     if ((millis()/500)%2==0){
       set(7,3,dotColor,buf);
@@ -237,85 +280,92 @@ int clipTo15(int i){
   if (i>15)return 15;
   return i;
 }
+
+CRGB flip(int i){
+  if(curBuffer==0)return leds[i];
+  return leds[(i%NUM_LEDS)+(1-(i/NUM_LEDS))*NUM_LEDS];
+}
+
 // ============= effects section used to blend between clock colors
 void calcEffect(){
   int8_t f=clipTo15((fader-8)/2);
+
   switch(curEffect){
     case 0:
       for (uint8_t y=0;y<8;y++)
         for (uint8_t x=0;x<16;x++)
-          copyBuffer[x*8+7-y]=leds[x+y*16+(f>x)*NUM_LEDS];
+          copyBuffer[x*8+7-y]=flip(x+y*16+(f>x)*NUM_LEDS);
       break;
     case 1:
       for (uint8_t y=0;y<8;y++)
         for (uint8_t x=0;x<16;x++)
-          copyBuffer[x*8+7-y]=leds[x+y*16+(fader-16>y)*NUM_LEDS];
+          copyBuffer[x*8+7-y]=flip(x+y*16+(fader-16>y)*NUM_LEDS);
       break;
     case 2:
       for (uint8_t y=0;y<8;y++)
         for (uint8_t x=0;x<16;x++)
           if (x>15-f)
-            copyBuffer[x*8+7-y]=leds[x-(16-f)+y*16+NUM_LEDS];
+            copyBuffer[x*8+7-y]=flip(x-(16-f)+y*16+NUM_LEDS);
           else
-            copyBuffer[x*8+7-y]=leds[x+f+y*16];
+            copyBuffer[x*8+7-y]=flip(x+f+y*16);
       break;
     case 3:
       for (uint8_t y=0;y<8;y++)
         for (uint8_t x=0;x<16;x++)
           if (fader<20)
-            copyBuffer[x*8+7-y]=blend(leds[x+y*16],CRGB::DarkRed,fader*12);
+            copyBuffer[x*8+7-y]=blend(flip(x+y*16),CRGB::DarkRed,fader*12);
           else
-            copyBuffer[x*8+7-y]=blend(leds[x+y*16+NUM_LEDS],CRGB::DarkRed,(39-fader)*12);
+            copyBuffer[x*8+7-y]=blend(flip(x+y*16+NUM_LEDS),CRGB::DarkRed,(39-fader)*12);
       break;
     case 4:
       for (uint8_t y=0;y<8;y++)
         for (uint8_t x=0;x<16;x++)
-          copyBuffer[x*8+7-y]=blend(leds[x+y*16],leds[x+y*16+NUM_LEDS],fader*6);
+          copyBuffer[x*8+7-y]=blend(flip(x+y*16),flip(x+y*16+NUM_LEDS),fader*6);
       break;
     case 5:
       clearCopyBuffer();
       for (uint8_t y=0;y<8;y++)
           if (f<8)
             for (uint8_t x=0;x<16-f*2;x++)
-              copyBuffer[clipTo15(x+f)*8+7-y]=leds[x+y*16];
+              copyBuffer[clipTo15(x+f)*8+7-y]=flip(x+y*16);
           else
             for (uint8_t x=0;x<f*2-14;x++)
-              copyBuffer[clipTo15(x+15-f)*8+7-y]=leds[x+y*16+NUM_LEDS];
+              copyBuffer[clipTo15(x+15-f)*8+7-y]=flip(x+y*16+NUM_LEDS);
       break;
     case 6:
       for (uint8_t y=0;y<8;y++)
         for (uint8_t x=0;x<16;x++)
           if (fader<20)
-            copyBuffer[x*8+7-y]=blend(leds[x+y*16],CRGB::Black,fader*12);
+            copyBuffer[x*8+7-y]=blend(flip(x+y*16),CRGB::Black,fader*12);
           else
-            copyBuffer[x*8+7-y]=blend(leds[x+y*16+NUM_LEDS],CRGB::Black,(39-fader)*12);
+            copyBuffer[x*8+7-y]=blend(flip(x+y*16+NUM_LEDS),CRGB::Black,(39-fader)*12);
       break;
     case 7:
       for (uint8_t y=0;y<8;y++)
         for (uint8_t x=0;x<16;x++)
           if (fader<20)
-            copyBuffer[x*8+7-y]=blend(leds[x+y*16],CRGB::DarkGreen,fader*12);
+            copyBuffer[x*8+7-y]=blend(flip(x+y*16),CRGB::DarkGreen,fader*12);
           else
-            copyBuffer[x*8+7-y]=blend(leds[x+y*16+NUM_LEDS],CRGB::DarkGreen,(39-fader)*12);
+            copyBuffer[x*8+7-y]=blend(flip(x+y*16+NUM_LEDS),CRGB::DarkGreen,(39-fader)*12);
       break;
     case 8:
       for (uint8_t y=0;y<8;y++)
         for (uint8_t x=0;x<16;x++)
           if (fader<20)
-            copyBuffer[x*8+7-y]=blend(leds[x+y*16],CRGB::DarkBlue,fader*12);
+            copyBuffer[x*8+7-y]=blend(flip(x+y*16),CRGB::DarkBlue,fader*12);
           else
-            copyBuffer[x*8+7-y]=blend(leds[x+y*16+NUM_LEDS],CRGB::DarkBlue,(39-fader)*12);
+            copyBuffer[x*8+7-y]=blend(flip(x+y*16+NUM_LEDS),CRGB::DarkBlue,(39-fader)*12);
       break;
     case 9:
       for (uint8_t y=0;y<8;y++)
         for (uint8_t x=0;x<16;x++)
-          copyBuffer[x*8+7-y]=leds[x+y*16];
+          copyBuffer[x*8+7-y]=flip(x+y*16);
       if (fader>=8)
         for (uint8_t i=0;i<=fader-8;i++){
-          copyBuffer[shuffle[i]]=leds[shuffle[i]/8+(7-shuffle[i]%8)*16+NUM_LEDS];
-          copyBuffer[shuffle[i]+8]=leds[shuffle[i]/8+(7-shuffle[i]%8)*16+1+NUM_LEDS];
-          copyBuffer[shuffle[i]+1]=leds[shuffle[i]/8+(7-shuffle[i]%8)*16-16+NUM_LEDS];
-          copyBuffer[shuffle[i]+9]=leds[shuffle[i]/8+(7-shuffle[i]%8)*16-15+NUM_LEDS];
+          copyBuffer[shuffle[i]]=flip(shuffle[i]/8+(7-shuffle[i]%8)*16+NUM_LEDS);
+          copyBuffer[shuffle[i]+8]=flip(shuffle[i]/8+(7-shuffle[i]%8)*16+1+NUM_LEDS);
+          copyBuffer[shuffle[i]+1]=flip(shuffle[i]/8+(7-shuffle[i]%8)*16-16+NUM_LEDS);
+          copyBuffer[shuffle[i]+9]=flip(shuffle[i]/8+(7-shuffle[i]%8)*16-15+NUM_LEDS);
         }
       break;
     default:

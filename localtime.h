@@ -29,7 +29,11 @@ bool updateTime(){
 /*
   // fake daytime to test color fading effects
   long v=(millis()/1000)%10;
-  timeinfo.tm_min=4+(v>=5);
+  timeinfo.tm_min=54+(v>=5)+5*((millis()/10000)%2);
+  if (timeinfo.tm_min==60){
+    timeinfo.tm_min=0;
+    timeinfo.tm_hour++;
+  }
   timeinfo.tm_sec=(55+v)%60;
   // end of time faking
 */
