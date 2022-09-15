@@ -176,39 +176,32 @@ void showDigit37(uint8_t num, CRGB c, uint8_t x,uint8_t buffer){
 }
 
 float htr(int i){
+  i=i%256;
   if (i<=0)return 0.f;
-  if (i>=129)return 0.f;
-  if ((i>=43)&&(i<=86))return 1.f;
+  if (i>=172)return 0.f;
+  if ((i>=43)&&(i<=128))return 1.f;
   if (i<43)return ((float)i)/43.f;
-  if (i>86)return ((float)(128-i))/43.f;
+  if (i>=129)return ((float)(172-i))/43.f;
 }
 
-void hsvToRgb(CHSV cIn,CRGB cOut){
+void hsvToRgb(CHSV cIn,CRGB* cOut){
   float w=255-cIn.s;
-  float r=htr(cIn.h-86)*255.f+w;
+  float r=htr(cIn.h+86)*255.f+w;
   float g=htr(cIn.h)*255.f+w;
-  float b=htr(cIn.h+86)*255.f+w;
+  float b=htr(cIn.h-86)*255.f+w;
   if(r<0.f)r=0.f;
   if(g<0.f)g=0.f;
   if(b<0.f)b=0.f;
   if(r>255.f)r=255.f;
   if(g>255.f)g=255.f;
   if(b>255.f)b=255.f;
-  cOut.r=r;
-  cOut.g=g;
-  cOut.b=b;
+  cOut->r=r;
+  cOut->g=g;
+  cOut->b=b;
+}
 
-  /*
-0   rd | \ 0
-43  yl / | 0
-86  gr 0 | \
-129 tr 0 / |
-172 bl \ 0 |
-215 pi | 0 /
-*/
-
-
-  
+int min(int a,int b){
+  if(a<b)return a; else return b;
 }
 
 void showTime(tm t){
@@ -221,7 +214,7 @@ void showTime(tm t){
     m=t.tm_min;
     h=t.tm_hour;
     if (fader==0){
-      hsvToRgb(clockColor[buf],clockColorRGB);
+      hsvToRgb(clockColor[buf],&clockColorRGB);
       if((clockColorRGB.r<128)&&(clockColorRGB.g<128)&&(clockColorRGB.b<128)){//correct colors, that may be reduced to black at minimum brightness (2)
         if(clockColorRGB.r>120)clockColorRGB.r=128;
         if(clockColorRGB.g>120)clockColorRGB.g=128;
@@ -266,7 +259,7 @@ void showTime(tm t){
 
 if (fader==0){
     curBuffer=(t.tm_min/5)%2;// pause switching buffers until fading is done
-    clockColor[!curBuffer]=CHSV((clockColor[curBuffer].h+random(98,198))%256,random(170,255),255);// move the hue more or less on the opposite site with a sight offset to advance enough
+    clockColor[!curBuffer]=CHSV((clockColor[curBuffer].h+random(98,198))%256,min(255,random(170,300)),255);// move the hue more or less on the opposite site with a sight offset to advance enough
     curEffect=random(10);
   }
  
