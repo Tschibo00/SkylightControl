@@ -23,6 +23,7 @@ uint8_t lastSec=0;
 uint8_t shuffle[32];
 
 long lastTimeUpdate=0L;
+uint8_t dotCount=0;
 
 void initDisplayController(){
 	for (int i = 0; i < NUM_LEDS*2; i++) {
@@ -207,6 +208,10 @@ int min(int a,int b){
 void showTime(tm t){
   if (millis()<lastTimeUpdate+LIGHT_CYCLE)return;
   lastTimeUpdate=millis();
+
+  dotCount=(dotCount+1)%10;
+
+  if((fader==0)&&(dotCount!=0))return;
 
   CRGB clockColorRGB;
   uint8_t m,h;
