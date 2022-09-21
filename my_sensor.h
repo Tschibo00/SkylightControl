@@ -9,6 +9,8 @@
 #include "my_log.h"
 #include "output.h"
 
+#define LIGHT_ARRAY_SIZE 50
+
 Adafruit_BME280 bme;            // sensor library
 float temperature=30.f;         // environment readings
 float pressure=940.f;
@@ -27,8 +29,8 @@ long unlockRainClosure=0l;      // timing variables
 bool rainClosureLocked=false;
 long rainPerHour;
 
-long lastLightSensorReading=0L;      // light sensor values
-int lightLevelRaw[10];              // raw value from analogRead
+long lastLightSensorReading=0L; // light sensor values
+int lightLevelRaw[LIGHT_ARRAY_SIZE]; // raw value from analogRead
 uint8_t lightArrayPtr=0;
 float lightLevelFloat;          // corrected values (0.0-1.0)
 float medLightLevel;
@@ -39,16 +41,18 @@ float medLightLevel;
 float getLightSensorReading(){
   if (millis()>lastLightSensorReading+1000){
     lightLevelRaw[lightArrayPtr]=analogRead(PIN_LIGHT_SENSOR);
-    lightArrayPtr=(lightArrayPtr+1)%10;
+    Serial.printf("light %d",lightLevelRaw[lightArrayPtr]);
+    lightArrayPtr=(lightArrayPtr+1)%LIGHT_ARRAY_SIZE;
     medLightLevel=0.f;
-    for (uint8_t i=0;i<10;i++)
+    for (uint8_t i=0;i<LIGHT_ARRAY_SIZE;i++)
       medLightLevel+=lightLevelRaw[i];
-    medLightLevel=medLightLevel/10.f;
+    medLightLevel=medLightLevel/((float)LIGHT_ARRAY_SIZE);
     lightLevelFloat=((float)(medLightLevel-LIGHT_LOWEST))/((float)(LIGHT_HIGHEST-LIGHT_LOWEST));
     if (lightLevelFloat<0.f) lightLevelFloat=0.f;
     if (lightLevelFloat>1.f) lightLevelFloat=1.f;
     lightLevelFloat=pow(lightLevelFloat,LIGHT_EXPONENT);
     lastLightSensorReading=millis();
+    Serial.printf("  med %.2f\n",lightLevelFloat);
   }
   return lightLevelFloat;
 }
