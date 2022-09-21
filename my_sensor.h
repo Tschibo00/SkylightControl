@@ -41,7 +41,6 @@ float medLightLevel;
 float getLightSensorReading(){
   if (millis()>lastLightSensorReading+1000){
     lightLevelRaw[lightArrayPtr]=analogRead(PIN_LIGHT_SENSOR);
-    Serial.printf("light %d",lightLevelRaw[lightArrayPtr]);
     lightArrayPtr=(lightArrayPtr+1)%LIGHT_ARRAY_SIZE;
     medLightLevel=0.f;
     for (uint8_t i=0;i<LIGHT_ARRAY_SIZE;i++)
@@ -52,7 +51,6 @@ float getLightSensorReading(){
     if (lightLevelFloat>1.f) lightLevelFloat=1.f;
     lightLevelFloat=pow(lightLevelFloat,LIGHT_EXPONENT);
     lastLightSensorReading=millis();
-    Serial.printf("  med %.2f\n",lightLevelFloat);
   }
   return lightLevelFloat;
 }
