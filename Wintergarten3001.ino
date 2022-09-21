@@ -1,4 +1,9 @@
 /*
+ * Required libraries to compile
+ * Adafruit BME280 v1.1.0 (plus dependent Adafruit Unified Sensor)
+ * FastLED v3.5.0
+ * thinger.io v2.25.2
+ *
  * wire BME280 as follows:
  * Vin 3.3V
  * GND GND
