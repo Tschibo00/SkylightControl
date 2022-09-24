@@ -39,7 +39,7 @@ float medLightLevel;
  * Reads analog value of light sensor (every second to avoid lag)
  */
 float getLightSensorReading(){
-  if (millis()>lastLightSensorReading+1000){
+  if (millis()>lastLightSensorReading+50+random(1500)){
     lightLevelRaw[lightArrayPtr]=analogRead(PIN_LIGHT_SENSOR);
     lightArrayPtr=(lightArrayPtr+1)%LIGHT_ARRAY_SIZE;
     medLightLevel=0.f;

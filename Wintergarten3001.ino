@@ -91,7 +91,7 @@ void loop() {
     nextTimeUpdate=millis()+1000;
     updateTime();
   }
-  showTime(timeinfo);
+  showTime(timeinfo,FONT);
   setBrightness(getBrightnessFromLightLevel());
 
   thingerHandle();
