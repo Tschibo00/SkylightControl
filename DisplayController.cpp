@@ -81,7 +81,16 @@ void set(int x, int y, CRGB color,uint8_t buffer){
 	if (x >= 0 && x < 16 && y >= 0 && y < 8) leds[y * 16 + x+buffer*NUM_LEDS] = color;
 }
 
-void showDigit37(uint8_t num, CRGB c, uint8_t x,uint8_t buffer){
+void showDigit37(uint8_t num, CRGB c, uint8_t x,uint8_t buffer,uint8_t font){
+  switch(font){
+    case 1: showDigit37_font1(num,c,x,buffer);break;
+    case 2: showDigit37_font2(num,c,x,buffer);break;
+    case 3: showDigit37_font3(num,c,x,buffer);break;
+  }
+}
+
+// serif font
+void showDigit37_font1(uint8_t num, CRGB c, uint8_t x,uint8_t buffer){
   switch(num){
     case 0:
       set(x+1,1,c,buffer);
@@ -176,6 +185,198 @@ void showDigit37(uint8_t num, CRGB c, uint8_t x,uint8_t buffer){
   }
 }
 
+// Amiga intro font
+void showDigit37_font2(uint8_t num, CRGB c, uint8_t x,uint8_t buffer){
+  switch(num){
+    case 0:
+      set(x+1,1,c,buffer);set(x+2,1,c,buffer);
+      set(x,2,c,buffer); set(x+2,2,c,buffer);
+      set(x,3,c,buffer); set(x+2,3,c,buffer);
+      set(x,4,c,buffer); set(x+2,4,c,buffer);
+      set(x,5,c,buffer); set(x+2,5,c,buffer);
+      set(x,6,c,buffer); set(x+2,6,c,buffer);
+      set(x,7,c,buffer); set(x+1,7,c,buffer); set(x+2,7,c,buffer);
+      break;
+    case 1:
+      set(x,1,c,buffer); set(x+1,1,c,buffer);
+      set(x+1,2,c,buffer);
+      set(x+1,3,c,buffer);
+      set(x+1,4,c,buffer);
+      set(x+1,5,c,buffer);
+      set(x+1,6,c,buffer);
+      set(x+1,7,c,buffer);
+      break;
+    case 2:
+      set(x,1,c,buffer);set(x+1,1,c,buffer);
+      set(x+2,2,c,buffer);
+      set(x+2,3,c,buffer);
+      set(x+1,4,c,buffer);
+      set(x,5,c,buffer);
+      set(x,6,c,buffer);
+      set(x,7,c,buffer); set(x+1,7,c,buffer); set(x+2,7,c,buffer);
+      break;
+    case 3:
+      set(x,1,c,buffer); set(x+1,1,c,buffer); set(x+2,1,c,buffer);
+      set(x+2,2,c,buffer);
+      set(x+2,3,c,buffer);
+      set(x,4,c,buffer); set(x+1,4,c,buffer); set(x+2,4,c,buffer);
+      set(x+2,5,c,buffer);
+      set(x+2,6,c,buffer);
+      set(x,7,c,buffer); set(x+1,7,c,buffer); set(x+2,7,c,buffer);
+      break;
+    case 4:
+      set(x,1,c,buffer); set(x+2,1,c,buffer);
+      set(x,2,c,buffer); set(x+2,2,c,buffer);
+      set(x,3,c,buffer); set(x+2,3,c,buffer);
+      set(x,4,c,buffer); set(x+1,4,c,buffer); set(x+2,4,c,buffer);
+      set(x+2,5,c,buffer);
+      set(x+2,6,c,buffer);
+      set(x+2,7,c,buffer);
+      break;
+    case 5:
+      set(x,1,c,buffer); set(x+1,1,c,buffer); set(x+2,1,c,buffer);
+      set(x,2,c,buffer);
+      set(x,3,c,buffer);
+      set(x,4,c,buffer); set(x+1,4,c,buffer); set(x+2,4,c,buffer);
+      set(x+2,5,c,buffer);
+      set(x+2,6,c,buffer);
+      set(x,7,c,buffer); set(x+1,7,c,buffer);
+      break;
+    case 6:
+      set(x+1,1,c,buffer); set(x+2,1,c,buffer);
+      set(x,2,c,buffer);
+      set(x,3,c,buffer);
+      set(x,4,c,buffer); set(x+1,4,c,buffer); set(x+2,4,c,buffer);
+      set(x,5,c,buffer); set(x+2,5,c,buffer);
+      set(x,6,c,buffer); set(x+2,6,c,buffer);
+      set(x,7,c,buffer); set(x+1,7,c,buffer); set(x+2,7,c,buffer);
+      break;
+    case 7:
+      set(x,1,c,buffer); set(x+1,1,c,buffer); set(x+2,1,c,buffer);
+      set(x+2,2,c,buffer);
+      set(x+2,3,c,buffer);
+      set(x+2,4,c,buffer);
+      set(x+2,5,c,buffer);
+      set(x+2,6,c,buffer);
+      set(x+2,7,c,buffer);
+      break;
+    case 8:
+      set(x+1,1,c,buffer); set(x+2,1,c,buffer);
+      set(x,2,c,buffer); set(x+2,2,c,buffer);
+      set(x,3,c,buffer); set(x+2,3,c,buffer);
+      set(x,4,c,buffer); set(x+1,4,c,buffer); set(x+2,4,c,buffer);
+      set(x,5,c,buffer); set(x+2,5,c,buffer);
+      set(x,6,c,buffer); set(x+2,6,c,buffer);
+      set(x,7,c,buffer); set(x+1,7,c,buffer); set(x+2,7,c,buffer);
+      break;
+    case 9:
+      set(x+1,1,c,buffer); set(x+2,1,c,buffer);
+      set(x,2,c,buffer); set(x+2,2,c,buffer);
+      set(x,3,c,buffer); set(x+2,3,c,buffer);
+      set(x,4,c,buffer); set(x+1,4,c,buffer); set(x+2,4,c,buffer);
+      set(x+2,5,c,buffer);
+      set(x+2,6,c,buffer);
+      set(x+2,7,c,buffer);
+      break;
+  }
+}
+
+// 7-segment font
+void showDigit37_font3(uint8_t num, CRGB c, uint8_t x,uint8_t buffer){
+  switch(num){
+    case 0:
+      set(x,1,c,buffer); set(x+1,1,c,buffer);set(x+2,1,c,buffer);
+      set(x,2,c,buffer); set(x+2,2,c,buffer);
+      set(x,3,c,buffer); set(x+2,3,c,buffer);
+      set(x,4,c,buffer); set(x+2,4,c,buffer);
+      set(x,5,c,buffer); set(x+2,5,c,buffer);
+      set(x,6,c,buffer); set(x+2,6,c,buffer);
+      set(x,7,c,buffer); set(x+1,7,c,buffer); set(x+2,7,c,buffer);
+      break;
+    case 1:
+      set(x+2,1,c,buffer);
+      set(x+2,2,c,buffer);
+      set(x+2,3,c,buffer);
+      set(x+2,4,c,buffer);
+      set(x+2,5,c,buffer);
+      set(x+2,6,c,buffer);
+      set(x+2,7,c,buffer);
+      break;
+    case 2:
+      set(x,1,c,buffer);set(x+1,1,c,buffer); set(x+2,1,c,buffer);
+      set(x+2,2,c,buffer);
+      set(x+2,3,c,buffer);
+      set(x,4,c,buffer); set(x+1,4,c,buffer); set(x+2,4,c,buffer);
+      set(x,5,c,buffer);
+      set(x,6,c,buffer);
+      set(x,7,c,buffer); set(x+1,7,c,buffer); set(x+2,7,c,buffer);
+      break;
+    case 3:
+      set(x,1,c,buffer); set(x+1,1,c,buffer); set(x+2,1,c,buffer);
+      set(x+2,2,c,buffer);
+      set(x+2,3,c,buffer);
+      set(x,4,c,buffer); set(x+1,4,c,buffer); set(x+2,4,c,buffer);
+      set(x+2,5,c,buffer);
+      set(x+2,6,c,buffer);
+      set(x,7,c,buffer); set(x+1,7,c,buffer); set(x+2,7,c,buffer);
+      break;
+    case 4:
+      set(x,1,c,buffer); set(x+2,1,c,buffer);
+      set(x,2,c,buffer); set(x+2,2,c,buffer);
+      set(x,3,c,buffer); set(x+2,3,c,buffer);
+      set(x,4,c,buffer); set(x+1,4,c,buffer); set(x+2,4,c,buffer);
+      set(x+2,5,c,buffer);
+      set(x+2,6,c,buffer);
+      set(x+2,7,c,buffer);
+      break;
+    case 5:
+      set(x,1,c,buffer); set(x+1,1,c,buffer); set(x+2,1,c,buffer);
+      set(x,2,c,buffer);
+      set(x,3,c,buffer);
+      set(x,4,c,buffer); set(x+1,4,c,buffer); set(x+2,4,c,buffer);
+      set(x+2,5,c,buffer);
+      set(x+2,6,c,buffer);
+      set(x,7,c,buffer); set(x+1,7,c,buffer); set(x+2,7,c,buffer);
+      break;
+    case 6:
+      set(x,1,c,buffer);
+      set(x,2,c,buffer);
+      set(x,3,c,buffer);
+      set(x,4,c,buffer); set(x+1,4,c,buffer); set(x+2,4,c,buffer);
+      set(x,5,c,buffer); set(x+2,5,c,buffer);
+      set(x,6,c,buffer); set(x+2,6,c,buffer);
+      set(x,7,c,buffer); set(x+1,7,c,buffer); set(x+2,7,c,buffer);
+      break;
+    case 7:
+      set(x,1,c,buffer); set(x+1,1,c,buffer); set(x+2,1,c,buffer);
+      set(x+2,2,c,buffer);
+      set(x+2,3,c,buffer);
+      set(x+2,4,c,buffer);
+      set(x+2,5,c,buffer);
+      set(x+2,6,c,buffer);
+      set(x+2,7,c,buffer);
+      break;
+    case 8:
+      set(x,1,c,buffer); set(x+1,1,c,buffer); set(x+2,1,c,buffer);
+      set(x,2,c,buffer); set(x+2,2,c,buffer);
+      set(x,3,c,buffer); set(x+2,3,c,buffer);
+      set(x,4,c,buffer); set(x+1,4,c,buffer); set(x+2,4,c,buffer);
+      set(x,5,c,buffer); set(x+2,5,c,buffer);
+      set(x,6,c,buffer); set(x+2,6,c,buffer);
+      set(x,7,c,buffer); set(x+1,7,c,buffer); set(x+2,7,c,buffer);
+      break;
+    case 9:
+      set(x,1,c,buffer); set(x+1,1,c,buffer); set(x+2,1,c,buffer);
+      set(x,2,c,buffer); set(x+2,2,c,buffer);
+      set(x,3,c,buffer); set(x+2,3,c,buffer);
+      set(x,4,c,buffer); set(x+1,4,c,buffer); set(x+2,4,c,buffer);
+      set(x+2,5,c,buffer);
+      set(x+2,6,c,buffer);
+      set(x+2,7,c,buffer);
+      break;
+  }
+}
+
 float htr(int i){
   i=i%256;
   if (i<=0)return 0.f;
@@ -205,7 +406,7 @@ int min(int a,int b){
   if(a<b)return a; else return b;
 }
 
-void showTime(tm t){
+void showTime(tm t,uint8_t font){
   if (millis()<lastTimeUpdate+LIGHT_CYCLE)return;
   lastTimeUpdate=millis();
 
@@ -235,12 +436,11 @@ void showTime(tm t){
           m++;
         }
       }
-      
       if (h>9)
-        showDigit37(h/10, clockColorRGB,0,buf);
-      showDigit37(h%10, clockColorRGB,4,buf);
-      showDigit37(m/10, clockColorRGB,9,buf);
-      showDigit37(m%10, clockColorRGB,13,buf);
+        showDigit37(h/10, clockColorRGB,0,buf,font);
+      showDigit37(h%10, clockColorRGB,4,buf,font);
+      showDigit37(m/10, clockColorRGB,9,buf,font);
+      showDigit37(m%10, clockColorRGB,13,buf,font);
     }
     if ((millis()/500)%2==0){
       set(7,3,dotColor,buf);

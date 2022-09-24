@@ -23,6 +23,7 @@ float LIGHT_EXPONENT;           // exponent to be used to light calculation (1=l
 long LUM_LOWEST;                // lowest luminance setting for clock (at minimal light level), range 0-255
 long LUM_HIGHEST;               // highest luminance setting for clock (at maximum light level), range 0-255
 float TEMP_LUM_CORRECTION;      // degrees to be substracted at maximum light level, linearly decreased with decreasing light level
+long FONT;                      // font for time display (1-3)
 Preferences prefs;
 
 /*
@@ -45,6 +46,7 @@ void readConfig(){
   LUM_LOWEST=prefs.getLong("LUM_LOWEST",2);
   LUM_HIGHEST=prefs.getLong("LUM_HIGHEST",255);
   TEMP_LUM_CORRECTION=prefs.getFloat("TEMP_LUM",7.f);
+  FONT=prefs.getLong("FONT",3);
   currentWindowState=prefs.getInt("WindowState",WINDOW_CLOSED);
 }
 
@@ -68,6 +70,7 @@ void writeConfig(){
   prefs.putLong("LUM_LOWEST",LUM_LOWEST);
   prefs.putLong("LUM_HIGHEST",LUM_HIGHEST);
   prefs.putFloat("TEMP_LUM",TEMP_LUM_CORRECTION);
+  prefs.putLong("FONT",FONT);
 }
 
 /*

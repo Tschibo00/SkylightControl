@@ -15,8 +15,11 @@ void displayShow();
 void clear(CRGB color,uint8_t buffer);
 void setBrightness(int b);
 void set(int x, int y, CRGB color,uint8_t buffer);
-void showDigit37(uint8_t num, CRGB c, uint8_t x,uint8_t buffer);
-void showTime(tm t);
+void showDigit37(uint8_t num, CRGB c, uint8_t x,uint8_t buffer,uint8_t font);
+void showDigit37_font1(uint8_t num, CRGB c, uint8_t x,uint8_t buffer);
+void showDigit37_font2(uint8_t num, CRGB c, uint8_t x,uint8_t buffer);
+void showDigit37_font3(uint8_t num, CRGB c, uint8_t x,uint8_t buffer);
+void showTime(tm t,uint8_t font);
 
 void calcEffect();
 
