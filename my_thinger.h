@@ -15,6 +15,7 @@ void setupThinger(){
   thing["humidity"] >> outputValue(humidity);
   thing["pressure"] >> outputValue(pressure);
   thing["rain"] >> outputValue(rainAmount);
+  thing["light"] >> outputValue(medLightLevel);
 }
 
 void thingerHandle(){

@@ -82,7 +82,9 @@ void loop() {
     Serial.print(humidity);
     Serial.print("% ");
     Serial.print(pressure);
-    Serial.println("hPa");
+    Serial.print("hPa ");
+    Serial.print(medLightLevel);
+    Serial.println("(raw)");
   
     evaluteWindowPosition();
   }

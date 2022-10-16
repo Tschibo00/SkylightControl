@@ -14,6 +14,7 @@ void initDisplayController();
 void displayShow();
 void clear(CRGB color,uint8_t buffer);
 void setBrightness(int b);
+int getBrightnessCorrection();
 void set(int x, int y, CRGB color,uint8_t buffer);
 void showDigit37(uint8_t num, CRGB c, uint8_t x,uint8_t buffer,uint8_t font);
 void showDigit37_font1(uint8_t num, CRGB c, uint8_t x,uint8_t buffer);
