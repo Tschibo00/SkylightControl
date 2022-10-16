@@ -11,4 +11,4 @@ Rain amount per hour is calculated and pushed (with temperature, humidity and pr
 Also includes a minimal webpage showing the current values and allowing to configure the parameters.
 
 ## Hardware
-ESP32 with BME280 sensor, Hydreon RG-11 in tipping bucket for sensing rain and a double relais output to trigger motor control of the skylight.
+ESP32 with BME280 sensor, Hydreon RG-11 in tipping bucket mode for sensing rain and a double relais output to trigger motor control of the skylight.
